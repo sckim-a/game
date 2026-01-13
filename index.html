@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>사과게임</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+  }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(10, 30px); /* 열 10 */
+    gap: 2px;
+    justify-content: center;
+    margin: 20px auto;
+    user-select: none;
+    touch-action: none; /* 모바일 터치 스크롤 방지 */
+  }
+
+  .cell {
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    background: #f2f2f2;
+    text-align: center;
+  }
+
+  .selected {
+    background: #ffb347;
+  }
+
+  .empty {
+    background: #ddd;
+    cursor: default;
+  }
+
+  button {
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>🍎 사과게임</h1>
+
+<p id="status">시작 버튼을 누르세요</p>
+<p id="score">점수: 0</p>
+<p id="timer">남은 시간: 02:00</p>
+
+<button id="startBtn">▶ 시작</button>
+
+<div id="board"></div>
+
+<script>
+const ROWS = 15; // 15행
+const COLS = 10; // 10열
+
+let board = [];
+let cells = [];
+let startCell = null;
+let selecting = false;
+
+let score = 0;
+let timeLeft = 120;
+let timerId = null;
+let gameOver = true;
+
+const boardEl = document.getElementById("board");
+const startBtn = document.getElementById("startBtn");
+
+// ---------- 초기화 ----------
+function initBoard() {
+  board = Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
+  );
+}
+
+function render() {
+  boardEl.innerHTML = "";
+  cells = [];
+
+  board.forEach((row, r) => {
+    row.forEach((val, c) => {
+      const div = document.createElement("div");
+      div.className = "cell" + (val === 0 ? " empty" : "");
+      div.textContent = val === 0 ? "" : val;
+      div.dataset.r = r;
+      div.dataset.c = c;
+      boardEl.appendChild(div);
+      cells.push(div);
+    });
+  });
+}
+
+// ---------- 타이머 ----------
+function startTimer() {
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      endGame("⏰ 시간 종료! 게임 오버");
+      return;
+    }
+    timeLeft--;
+    updateTimerUI();
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const min = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+  const sec = String(timeLeft % 60).padStart(2, "0");
+  document.getElementById("timer").textContent = `남은 시간: ${min}:${sec}`;
+}
+
+// ---------- 유틸 ----------
+function clearSelection() {
+  cells.forEach(c => c.classList.remove("selected"));
+}
+
+function getRect(r1, c1, r2, c2) {
+  const rs = Math.min(r1, r2);
+  const re = Math.max(r1, r2);
+  const cs = Math.min(c1, c2);
+  const ce = Math.max(c1, c2);
+
+  let sum = 0;
+  let positions = [];
+
+  for (let r = rs; r <= re; r++) {
+    for (let c = cs; c <= ce; c++) {
+      if (board[r][c] > 0) {
+        sum += board[r][c];
+        positions.push([r, c]);
+      }
+    }
+  }
+  return { sum, positions };
+}
+
+// ---------- 입력 처리 ----------
+function getCellFromEvent(e) {
+  let target = e.target;
+  if (e.touches && e.touches[0]) {
+    const touch = e.touches[0];
+    target = document.elementFromPoint(touch.clientX, touch.clientY);
+  }
+  if (!target || !target.classList.contains("cell")) return null;
+  return target;
+}
+
+function startSelection(e) {
+  if (gameOver) return;
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  startCell = cell;
+  selecting = true;
+  clearSelection();
+  e.preventDefault();
+}
+
+function moveSelection(e) {
+  if (!selecting || gameOver) return;
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+
+  clearSelection();
+
+  const r1 = +startCell.dataset.r;
+  const c1 = +startCell.dataset.c;
+  const r2 = +cell.dataset.r;
+  const c2 = +cell.dataset.c;
+
+  const rs = Math.min(r1, r2);
+  const re = Math.max(r1, r2);
+  const cs = Math.min(c1, c2);
+  const ce = Math.max(c1, c2);
+
+  cells.forEach(c => {
+    const r = +c.dataset.r;
+    const c_ = +c.dataset.c;
+    if (r >= rs && r <= re && c_ >= cs && c_ <= ce) {
+      c.classList.add("selected");
+    }
+  });
+  e.preventDefault();
+}
+
+function endSelection(e) {
+  if (!selecting || gameOver) return;
+  selecting = false;
+
+  const cell = getCellFromEvent(e);
+  if (!cell || !startCell) return;
+
+  const r1 = +startCell.dataset.r;
+  const c1 = +startCell.dataset.c;
+  const r2 = +cell.dataset.r;
+  const c2 = +cell.dataset.c;
+
+  const { sum, positions } = getRect(r1, c1, r2, c2);
+
+  if (sum === 10 && positions.length >= 2) {
+    positions.forEach(([r, c]) => board[r][c] = 0);
+    score += positions.length;
+    document.getElementById("score").textContent = `점수: ${score}`;
+    render();
+    checkGameOver();
+  } else {
+    clearSelection();
+  }
+  e.preventDefault();
+}
+
+// ---------- 이벤트 연결 ----------
+boardEl.addEventListener("mousedown", startSelection);
+boardEl.addEventListener("mousemove", moveSelection);
+boardEl.addEventListener("mouseup", endSelection);
+
+boardEl.addEventListener("touchstart", startSelection);
+boardEl.addEventListener("touchmove", moveSelection);
+boardEl.addEventListener("touchend", endSelection);
+
+// ---------- 게임 종료 ----------
+function checkGameOver() {
+  let hasTile = false;
+  let possible = false;
+
+  for (let r1 = 0; r1 < ROWS; r1++) {
+    for (let c1 = 0; c1 < COLS; c1++) {
+      for (let r2 = r1; r2 < ROWS; r2++) {
+        for (let c2 = c1; c2 < COLS; c2++) {
+          const { sum, positions } = getRect(r1, c1, r2, c2);
+          if (positions.length > 0) hasTile = true;
+          if (sum === 10 && positions.length >= 2) {
+            possible = true;
+            break;
+          }
+        }
+        if (possible) break;
+      }
+      if (possible) break;
+    }
+    if (possible) break;
+  }
+
+  if (!hasTile) {
+    endGame("🎉 모든 타일 제거! 게임 클리어!");
+  } else if (!possible) {
+    endGame("❌ 더 이상 조합이 없습니다. 게임 종료!");
+  }
+}
+
+function endGame(message) {
+  gameOver = true;
+  clearInterval(timerId);
+  document.getElementById("status").textContent = message;
+  boardEl.style.pointerEvents = "none";
+  startBtn.disabled = false;
+}
+
+// ---------- 시작 버튼 ----------
+startBtn.addEventListener("click", () => {
+  score = 0;
+  timeLeft = 120;
+  gameOver = false;
+
+  document.getElementById("score").textContent = "점수: 0";
+  document.getElementById("status").textContent = "게임 진행 중";
+  updateTimerUI();
+
+  initBoard();
+  render();
+
+  boardEl.style.pointerEvents = "auto";
+  startBtn.disabled = true;
+
+  startTimer();
+});
+</script>
+
+</body>
+</html>
