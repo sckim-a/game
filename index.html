@@ -58,12 +58,11 @@
     font-size: 14px;
   }
 
-  /* 랭킹 */
   #ranking {
-    max-width: 300px;
+    max-width: 320px;
     margin: 10px auto 20px;
-    text-align: left;
     padding: 0;
+    text-align: left;
   }
 
   #ranking li {
@@ -164,21 +163,26 @@ function loadRanking() {
 
   data.forEach((item, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${idx + 1}위 - ${item.score}점 (${item.date})`;
+    li.textContent = `${idx + 1}위 · ${item.name} · ${item.score}점 (${item.date})`;
     rankingEl.appendChild(li);
   });
 }
 
 function saveRanking(score) {
+  let name = prompt("닉네임을 입력하세요 (최대 10자)") || "PLAYER";
+  name = name.trim().slice(0, 10);
+  if (!name) name = "PLAYER";
+
   let data = JSON.parse(localStorage.getItem("appleRanking") || "[]");
 
   data.push({
+    name,
     score,
     date: new Date().toLocaleDateString()
   });
 
   data.sort((a, b) => b.score - a.score);
-  data = data.slice(0, 10); // TOP 10
+  data = data.slice(0, 10);
 
   localStorage.setItem("appleRanking", JSON.stringify(data));
   loadRanking();
