@@ -2,32 +2,36 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>사과게임</title>
 <style>
   body {
     font-family: Arial, sans-serif;
     text-align: center;
+    margin: 0;
+    padding: 0;
   }
 
   #board {
     display: grid;
-    grid-template-columns: repeat(15, 30px); /* 열 15 */
+    grid-template-columns: repeat(10, 1fr); /* 열 10개 동일 비율 */
     gap: 2px;
-    justify-content: center;
+    max-width: 100%;
     margin: 20px auto;
     user-select: none;
     touch-action: none; /* 모바일 터치 스크롤 방지 */
   }
 
   .cell {
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 16px;
+    aspect-ratio: 1 / 1; /* 정사각형 유지 */
+    font-size: calc(16px + 0.5vw); /* 화면 크기에 맞춰 글씨 확대 */
     background: #f2f2f2;
     text-align: center;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .selected {
@@ -43,6 +47,7 @@
     padding: 6px 12px;
     font-size: 14px;
     cursor: pointer;
+    margin-bottom: 10px;
   }
 </style>
 </head>
@@ -59,8 +64,8 @@
 <div id="board"></div>
 
 <script>
-const ROWS = 10;
-const COLS = 15;
+const ROWS = 15;
+const COLS = 10;
 
 let board = [];
 let cells = [];
@@ -144,17 +149,29 @@ function getRect(r1, c1, r2, c2) {
   return { sum, positions };
 }
 
-// ---------- 입력 처리 ----------
-function getCellFromEvent(e) {
-  let target = e.target;
-  if (e.touches && e.touches[0]) {
-    const touch = e.touches[0];
-    target = document.elementFromPoint(touch.clientX, touch.clientY);
-  }
-  if (!target || !target.classList.contains("cell")) return null;
-  return target;
+// ---------- 터치 좌표 계산 ----------
+function getCellFromTouch(touch) {
+  const rect = boardEl.getBoundingClientRect();
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+
+  const cellWidth = rect.width / COLS;
+  const cellHeight = rect.height / ROWS;
+
+  const c = Math.floor(x / cellWidth);
+  const r = Math.floor(y / cellHeight);
+
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+  return cells[r * COLS + c];
 }
 
+function getCellFromEvent(e) {
+  if (e.touches && e.touches[0]) return getCellFromTouch(e.touches[0]);
+  if (e.target.classList.contains("cell")) return e.target;
+  return null;
+}
+
+// ---------- 입력 처리 ----------
 function startSelection(e) {
   if (gameOver) return;
   const cell = getCellFromEvent(e);
