@@ -12,9 +12,18 @@ body { margin:0; font-family:Arial; text-align:center; }
 #info { display:flex; justify-content:center; gap:15px; margin:8px 0; }
 
 #board {
-  width:95vw; max-width:420px; margin:auto;
-  display:grid; grid-template-columns:repeat(10,1fr);
-  gap:2px; touch-action:none; user-select:none;
+  width: 80vw;          /* 👈 화면의 80%만 사용 */
+  max-width: 360px;     /* 데스크톱에서도 너무 커지지 않게 */
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  touch-action: none;
+  user-select: none;
+}
+
+#gameScreen {
+  padding-top: 10px;
 }
 
 .cell {
@@ -26,6 +35,12 @@ body { margin:0; font-family:Arial; text-align:center; }
 .selected { background:#ffb347; }
 .empty { background:#ddd; }
 
+@media (max-width: 400px) {
+  .cell {
+    font-size: 16px;
+  }
+}
+  
 #ranking {
   max-width:320px;
   margin:10px auto 20px;
@@ -237,4 +252,5 @@ showMain();
 
 </body>
 </html>
+
 
