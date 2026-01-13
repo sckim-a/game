@@ -30,7 +30,7 @@
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     gap: 2px;
-    touch-action: none; /* ⭐ 핵심 */
+    touch-action: none;
     user-select: none;
   }
 
@@ -58,18 +58,22 @@
     font-size: 14px;
   }
 
-  #history {
+  /* 랭킹 */
+  #ranking {
     max-width: 300px;
-    margin: 10px auto;
+    margin: 10px auto 20px;
     text-align: left;
+    padding: 0;
   }
 
-  #history li {
-    background: #f2f2f2;
-    margin: 3px 0;
-    padding: 4px;
+  #ranking li {
+    list-style: none;
+    background: #fff3cd;
+    margin: 4px 0;
+    padding: 6px;
     border-radius: 4px;
-    font-size: 13px;
+    font-weight: bold;
+    font-size: 14px;
   }
 </style>
 </head>
@@ -87,8 +91,8 @@
 
 <div id="board"></div>
 
-<h3>🏆 점수 이력</h3>
-<ul id="history"></ul>
+<h3>🥇 최고 점수 랭킹 TOP 10</h3>
+<ol id="ranking"></ol>
 
 <script>
 /* ===== 설정 ===== */
@@ -111,7 +115,7 @@ const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
 const startBtn = document.getElementById("startBtn");
-const historyEl = document.getElementById("history");
+const rankingEl = document.getElementById("ranking");
 
 /* ===== 보드 ===== */
 function initBoard() {
@@ -153,23 +157,31 @@ function updateTimer() {
   timerEl.textContent = `${m}:${s}`;
 }
 
-/* ===== 점수 이력 ===== */
-function loadHistory() {
-  const data = JSON.parse(localStorage.getItem("appleHistory") || "[]");
-  historyEl.innerHTML = "";
-  data.forEach(h => {
+/* ===== 랭킹 ===== */
+function loadRanking() {
+  const data = JSON.parse(localStorage.getItem("appleRanking") || "[]");
+  rankingEl.innerHTML = "";
+
+  data.forEach((item, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${h.date} - ${h.score}점`;
-    historyEl.appendChild(li);
+    li.textContent = `${idx + 1}위 - ${item.score}점 (${item.date})`;
+    rankingEl.appendChild(li);
   });
 }
 
-function saveHistory(score) {
-  const data = JSON.parse(localStorage.getItem("appleHistory") || "[]");
-  data.unshift({ score, date: new Date().toLocaleString() });
-  if (data.length > 10) data.pop();
-  localStorage.setItem("appleHistory", JSON.stringify(data));
-  loadHistory();
+function saveRanking(score) {
+  let data = JSON.parse(localStorage.getItem("appleRanking") || "[]");
+
+  data.push({
+    score,
+    date: new Date().toLocaleDateString()
+  });
+
+  data.sort((a, b) => b.score - a.score);
+  data = data.slice(0, 10); // TOP 10
+
+  localStorage.setItem("appleRanking", JSON.stringify(data));
+  loadRanking();
 }
 
 /* ===== 유틸 ===== */
@@ -192,7 +204,7 @@ function getRect(r1, c1, r2, c2) {
   return { sum, pos };
 }
 
-/* ===== Pointer 이벤트 (핵심) ===== */
+/* ===== Pointer 이벤트 ===== */
 function getCellFromPointer(e) {
   const rect = boardEl.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -220,6 +232,7 @@ function pointerMove(e) {
   if (!cell) return;
 
   clearSelection();
+
   const r1 = +startCell.dataset.r;
   const c1 = +startCell.dataset.c;
   const r2 = +cell.dataset.r;
@@ -259,7 +272,7 @@ function pointerUp(e) {
   }
 }
 
-/* ===== 이벤트 연결 ===== */
+/* ===== 이벤트 ===== */
 boardEl.addEventListener("pointerdown", pointerDown);
 boardEl.addEventListener("pointermove", pointerMove);
 boardEl.addEventListener("pointerup", pointerUp);
@@ -270,7 +283,7 @@ function endGame(msg) {
   gameOver = true;
   clearInterval(timerId);
   alert(msg);
-  saveHistory(score);
+  saveRanking(score);
 }
 
 startBtn.onclick = () => {
@@ -284,7 +297,7 @@ startBtn.onclick = () => {
   startTimer();
 };
 
-loadHistory();
+loadRanking();
 </script>
 
 </body>
