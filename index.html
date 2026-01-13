@@ -1,37 +1,47 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>사과게임</title>
+
 <style>
   body {
+    margin: 0;
     font-family: Arial, sans-serif;
     text-align: center;
-    margin: 0;
-    padding: 0;
+  }
+
+  h1 {
+    margin-top: 10px;
+  }
+
+  #info {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 8px;
   }
 
   #board {
+    width: 95vw;
+    max-width: 420px;
+    margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     gap: 2px;
-    max-width: 100%;
-    margin: 20px auto;
+    touch-action: none; /* ⭐ 핵심 */
     user-select: none;
-    touch-action: none;
   }
 
   .cell {
     aspect-ratio: 1 / 1;
-    font-size: calc(16px + 0.5vw);
-    background: #f2f2f2;
-    text-align: center;
-    font-weight: bold;
-    cursor: pointer;
+    background: #f0f0f0;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
   }
 
   .selected {
@@ -40,65 +50,70 @@
 
   .empty {
     background: #ddd;
-    cursor: default;
   }
 
   button {
-    padding: 6px 12px;
+    margin: 10px;
+    padding: 6px 14px;
     font-size: 14px;
-    cursor: pointer;
-    margin-bottom: 10px;
   }
 
-  #scoreHistory {
-    list-style: none;
-    padding: 0;
+  #history {
     max-width: 300px;
-    margin: 0 auto 20px;
+    margin: 10px auto;
     text-align: left;
   }
 
-  #scoreHistory li {
+  #history li {
     background: #f2f2f2;
-    margin: 2px 0;
-    padding: 4px 6px;
+    margin: 3px 0;
+    padding: 4px;
     border-radius: 4px;
+    font-size: 13px;
   }
 </style>
 </head>
+
 <body>
 
 <h1>🍎 사과게임</h1>
 
-<p id="status">시작 버튼을 누르세요</p>
-<p id="score">점수: 0</p>
-<p id="timer">남은 시간: 02:00</p>
+<div id="info">
+  <div id="score">점수: 0</div>
+  <div id="timer">02:00</div>
+</div>
 
 <button id="startBtn">▶ 시작</button>
 
 <div id="board"></div>
 
-<h2>🏆 점수 이력</h2>
-<ul id="scoreHistory"></ul>
+<h3>🏆 점수 이력</h3>
+<ul id="history"></ul>
 
 <script>
+/* ===== 설정 ===== */
 const ROWS = 15;
 const COLS = 10;
+const GAME_TIME = 120;
 
+/* ===== 상태 ===== */
 let board = [];
 let cells = [];
 let startCell = null;
 let selecting = false;
-
 let score = 0;
-let timeLeft = 120;
+let timeLeft = GAME_TIME;
 let timerId = null;
 let gameOver = true;
 
+/* ===== DOM ===== */
 const boardEl = document.getElementById("board");
+const scoreEl = document.getElementById("score");
+const timerEl = document.getElementById("timer");
 const startBtn = document.getElementById("startBtn");
+const historyEl = document.getElementById("history");
 
-// ---------- 초기화 ----------
+/* ===== 보드 ===== */
 function initBoard() {
   board = Array.from({ length: ROWS }, () =>
     Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
@@ -122,227 +137,154 @@ function render() {
   });
 }
 
-// ---------- 타이머 ----------
+/* ===== 타이머 ===== */
 function startTimer() {
   clearInterval(timerId);
   timerId = setInterval(() => {
-    if (timeLeft <= 0) {
-      clearInterval(timerId);
-      endGame("⏰ 시간 종료! 게임 오버");
-      return;
-    }
     timeLeft--;
-    updateTimerUI();
+    updateTimer();
+    if (timeLeft <= 0) endGame("⏰ 시간 종료");
   }, 1000);
 }
 
-function updateTimerUI() {
-  const min = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const sec = String(timeLeft % 60).padStart(2, "0");
-  document.getElementById("timer").textContent = `남은 시간: ${min}:${sec}`;
+function updateTimer() {
+  const m = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+  const s = String(timeLeft % 60).padStart(2, "0");
+  timerEl.textContent = `${m}:${s}`;
 }
 
-// ---------- 점수 이력 ----------
-function loadScoreHistory() {
-  const history = JSON.parse(localStorage.getItem("scoreHistory") || "[]");
-  const ul = document.getElementById("scoreHistory");
-  ul.innerHTML = "";
-  history.forEach(item => {
+/* ===== 점수 이력 ===== */
+function loadHistory() {
+  const data = JSON.parse(localStorage.getItem("appleHistory") || "[]");
+  historyEl.innerHTML = "";
+  data.forEach(h => {
     const li = document.createElement("li");
-    li.textContent = `${item.date} - ${item.score}점`;
-    ul.appendChild(li);
+    li.textContent = `${h.date} - ${h.score}점`;
+    historyEl.appendChild(li);
   });
 }
 
-function addScoreHistory(score) {
-  const history = JSON.parse(localStorage.getItem("scoreHistory") || "[]");
-  const now = new Date();
-  const dateStr = now.toLocaleString();
-  history.unshift({ score, date: dateStr });
-  if (history.length > 10) history.pop();
-  localStorage.setItem("scoreHistory", JSON.stringify(history));
-  loadScoreHistory();
+function saveHistory(score) {
+  const data = JSON.parse(localStorage.getItem("appleHistory") || "[]");
+  data.unshift({ score, date: new Date().toLocaleString() });
+  if (data.length > 10) data.pop();
+  localStorage.setItem("appleHistory", JSON.stringify(data));
+  loadHistory();
 }
 
-// ---------- 유틸 ----------
+/* ===== 유틸 ===== */
 function clearSelection() {
   cells.forEach(c => c.classList.remove("selected"));
 }
 
 function getRect(r1, c1, r2, c2) {
-  const rs = Math.min(r1, r2);
-  const re = Math.max(r1, r2);
-  const cs = Math.min(c1, c2);
-  const ce = Math.max(c1, c2);
-
   let sum = 0;
-  let positions = [];
+  let pos = [];
 
-  for (let r = rs; r <= re; r++) {
-    for (let c = cs; c <= ce; c++) {
+  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
+    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
       if (board[r][c] > 0) {
         sum += board[r][c];
-        positions.push([r, c]);
+        pos.push([r, c]);
       }
     }
   }
-  return { sum, positions };
+  return { sum, pos };
 }
 
-// ---------- 터치 좌표 계산 ----------
-function getCellFromTouch(touch) {
+/* ===== Pointer 이벤트 (핵심) ===== */
+function getCellFromPointer(e) {
   const rect = boardEl.getBoundingClientRect();
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
-  const cellWidth = rect.width / COLS;
-  const cellHeight = rect.height / ROWS;
-  const c = Math.floor(x / cellWidth);
-  const r = Math.floor(y / cellHeight);
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const c = Math.floor(x / (rect.width / COLS));
+  const r = Math.floor(y / (rect.height / ROWS));
+
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
   return cells[r * COLS + c];
 }
 
-function getCellFromEvent(e) {
-  if (e.touches && e.touches[0]) return getCellFromTouch(e.touches[0]);
-  if (e.target.classList.contains("cell")) return e.target;
-  return null;
-}
-
-// ---------- 입력 처리 ----------
-function startSelection(e) {
+function pointerDown(e) {
   if (gameOver) return;
-  const cell = getCellFromEvent(e);
+  const cell = getCellFromPointer(e);
   if (!cell) return;
   startCell = cell;
   selecting = true;
   clearSelection();
-  e.preventDefault();
 }
 
-function moveSelection(e) {
-  if (!selecting || gameOver) return;
-  const cell = getCellFromEvent(e);
+function pointerMove(e) {
+  if (!selecting) return;
+  const cell = getCellFromPointer(e);
   if (!cell) return;
 
   clearSelection();
-
   const r1 = +startCell.dataset.r;
   const c1 = +startCell.dataset.c;
   const r2 = +cell.dataset.r;
   const c2 = +cell.dataset.c;
-
-  const rs = Math.min(r1, r2);
-  const re = Math.max(r1, r2);
-  const cs = Math.min(c1, c2);
-  const ce = Math.max(c1, c2);
 
   cells.forEach(c => {
     const r = +c.dataset.r;
-    const c_ = +c.dataset.c;
-    if (r >= rs && r <= re && c_ >= cs && c_ <= ce) {
-      c.classList.add("selected");
-    }
+    const col = +c.dataset.c;
+    if (
+      r >= Math.min(r1, r2) && r <= Math.max(r1, r2) &&
+      col >= Math.min(c1, c2) && col <= Math.max(c1, c2)
+    ) c.classList.add("selected");
   });
-  e.preventDefault();
 }
 
-function endSelection(e) {
-  if (!selecting || gameOver) return;
+function pointerUp(e) {
+  if (!selecting) return;
   selecting = false;
 
-  const cell = getCellFromEvent(e);
-  if (!cell || !startCell) return;
+  const cell = getCellFromPointer(e);
+  if (!cell) return;
 
   const r1 = +startCell.dataset.r;
   const c1 = +startCell.dataset.c;
   const r2 = +cell.dataset.r;
   const c2 = +cell.dataset.c;
 
-  const { sum, positions } = getRect(r1, c1, r2, c2);
+  const { sum, pos } = getRect(r1, c1, r2, c2);
 
-  if (sum === 10 && positions.length >= 2) {
-    positions.forEach(([r, c]) => board[r][c] = 0);
-    score += positions.length;
-    document.getElementById("score").textContent = `점수: ${score}`;
+  if (sum === 10 && pos.length >= 2) {
+    pos.forEach(([r, c]) => board[r][c] = 0);
+    score += pos.length;
+    scoreEl.textContent = `점수: ${score}`;
     render();
-    checkGameOver();
   } else {
     clearSelection();
   }
-  e.preventDefault();
 }
 
-// ---------- 이벤트 연결 ----------
-boardEl.addEventListener("mousedown", startSelection);
-boardEl.addEventListener("mousemove", moveSelection);
-boardEl.addEventListener("mouseup", endSelection);
+/* ===== 이벤트 연결 ===== */
+boardEl.addEventListener("pointerdown", pointerDown);
+boardEl.addEventListener("pointermove", pointerMove);
+boardEl.addEventListener("pointerup", pointerUp);
+boardEl.addEventListener("pointercancel", pointerUp);
 
-boardEl.addEventListener("touchstart", startSelection);
-boardEl.addEventListener("touchmove", moveSelection);
-boardEl.addEventListener("touchend", endSelection);
-
-// ---------- 게임 종료 ----------
-function checkGameOver() {
-  let hasTile = false;
-  let possible = false;
-
-  for (let r1 = 0; r1 < ROWS; r1++) {
-    for (let c1 = 0; c1 < COLS; c1++) {
-      for (let r2 = r1; r2 < ROWS; r2++) {
-        for (let c2 = c1; c2 < COLS; c2++) {
-          const { sum, positions } = getRect(r1, c1, r2, c2);
-          if (positions.length > 0) hasTile = true;
-          if (sum === 10 && positions.length >= 2) {
-            possible = true;
-            break;
-          }
-        }
-        if (possible) break;
-      }
-      if (possible) break;
-    }
-    if (possible) break;
-  }
-
-  if (!hasTile) {
-    endGame("🎉 모든 타일 제거! 게임 클리어!");
-  } else if (!possible) {
-    endGame("❌ 더 이상 조합이 없습니다. 게임 종료!");
-  }
-}
-
-function endGame(message) {
+/* ===== 게임 ===== */
+function endGame(msg) {
   gameOver = true;
   clearInterval(timerId);
-  document.getElementById("status").textContent = message;
-  boardEl.style.pointerEvents = "none";
-  startBtn.disabled = false;
-
-  // 점수 이력에 추가
-  addScoreHistory(score);
+  alert(msg);
+  saveHistory(score);
 }
 
-// ---------- 시작 버튼 ----------
-startBtn.addEventListener("click", () => {
+startBtn.onclick = () => {
   score = 0;
-  timeLeft = 120;
+  timeLeft = GAME_TIME;
   gameOver = false;
-
-  document.getElementById("score").textContent = "점수: 0";
-  document.getElementById("status").textContent = "게임 진행 중";
-  updateTimerUI();
-
+  scoreEl.textContent = "점수: 0";
+  updateTimer();
   initBoard();
   render();
-
-  boardEl.style.pointerEvents = "auto";
-  startBtn.disabled = true;
-
   startTimer();
-});
+};
 
-// ---------- 초기 점수 이력 로드 ----------
-loadScoreHistory();
+loadHistory();
 </script>
 
 </body>
