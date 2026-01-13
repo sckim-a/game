@@ -7,23 +7,37 @@
 
 <style>
 body { margin:0; font-family:Arial; text-align:center; }
-#info { display:flex; justify-content:center; gap:15px; }
+.hidden { display:none; }
+
+#info { display:flex; justify-content:center; gap:15px; margin:8px 0; }
+
 #board {
   width:95vw; max-width:420px; margin:auto;
   display:grid; grid-template-columns:repeat(10,1fr);
   gap:2px; touch-action:none; user-select:none;
 }
+
 .cell {
-  aspect-ratio:1/1; background:#f0f0f0;
+  aspect-ratio:1/1;
+  background:#f0f0f0;
   display:flex; align-items:center; justify-content:center;
   font-weight:bold; font-size:18px;
 }
 .selected { background:#ffb347; }
 .empty { background:#ddd; }
-#ranking { max-width:330px; margin:10px auto; text-align:left; padding:0; }
+
+#ranking {
+  max-width:320px;
+  margin:10px auto 20px;
+  padding:0;
+  text-align:left;
+}
 #ranking li {
-  list-style:none; background:#fff3cd;
-  margin:4px 0; padding:6px; border-radius:4px;
+  list-style:none;
+  background:#fff3cd;
+  margin:4px 0;
+  padding:6px;
+  border-radius:4px;
 }
 </style>
 </head>
@@ -31,17 +45,23 @@ body { margin:0; font-family:Arial; text-align:center; }
 <body>
 
 <h2>🍎 사과게임</h2>
-<div id="info">
-  <div id="score">점수: 0</div>
-  <div id="timer">02:00</div>
+
+<!-- ===== 메인 화면 ===== -->
+<div id="mainScreen">
+  <button id="startBtn">▶ 게임 시작</button>
+  <h3>🥇 친구 랭킹 TOP 10</h3>
+  <ol id="ranking"></ol>
 </div>
-<button id="startBtn">▶ 시작</button>
-<div id="board"></div>
 
-<h3>🥇 친구들과 랭킹 TOP 10</h3>
-<ol id="ranking"></ol>
+<!-- ===== 게임 화면 ===== -->
+<div id="gameScreen" class="hidden">
+  <div id="info">
+    <div id="score">점수: 0</div>
+    <div id="timer">02:00</div>
+  </div>
+  <div id="board"></div>
+</div>
 
-<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
@@ -49,62 +69,86 @@ import {
   query, orderBy, limit, getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 여기에 Firebase 설정 붙여넣기 */
+/* 🔥 Firebase 설정 */
 const firebaseConfig = {
-    apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
-    authDomain: "applegame-32c01.firebaseapp.com",
-    projectId: "applegame-32c01",
-    storageBucket: "applegame-32c01.firebasestorage.app",
-    messagingSenderId: "471752911086",
-    appId: "1:471752911086:web:6ea47c3952412fe650ebff",
-    measurementId: "G-4GETLD0JGB"
-  };
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===== 게임 설정 ===== */
-const ROWS = 15, COLS = 10, GAME_TIME = 120;
+const ROWS = 12;
+const COLS = 10;
+const GAME_TIME = 120;
+
+/* ===== 상태 ===== */
 let board=[], cells=[], startCell=null, selecting=false;
 let score=0, timeLeft=GAME_TIME, timerId=null, gameOver=true;
 
-const boardEl=document.getElementById("board");
-const scoreEl=document.getElementById("score");
-const timerEl=document.getElementById("timer");
-const rankingEl=document.getElementById("ranking");
+/* ===== DOM ===== */
+const boardEl = document.getElementById("board");
+const scoreEl = document.getElementById("score");
+const timerEl = document.getElementById("timer");
+const rankingEl = document.getElementById("ranking");
+const mainScreen = document.getElementById("mainScreen");
+const gameScreen = document.getElementById("gameScreen");
+
+/* ===== 화면 전환 ===== */
+function showMain() {
+  mainScreen.classList.remove("hidden");
+  gameScreen.classList.add("hidden");
+  loadRanking();
+}
+function showGame() {
+  mainScreen.classList.add("hidden");
+  gameScreen.classList.remove("hidden");
+}
 
 /* ===== 보드 ===== */
-function initBoard(){
-  board=Array.from({length:ROWS},()=>Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1));
+function initBoard() {
+  board = Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
+  );
 }
-function render(){
-  boardEl.innerHTML=""; cells=[];
+function render() {
+  boardEl.innerHTML="";
+  cells=[];
   board.forEach((row,r)=>row.forEach((v,c)=>{
     const d=document.createElement("div");
     d.className="cell"+(v===0?" empty":"");
-    d.textContent=v||""; d.dataset.r=r; d.dataset.c=c;
-    boardEl.appendChild(d); cells.push(d);
+    d.textContent=v||"";
+    d.dataset.r=r; d.dataset.c=c;
+    boardEl.appendChild(d);
+    cells.push(d);
   }));
 }
 
 /* ===== 타이머 ===== */
-function startTimer(){
+function startTimer() {
   clearInterval(timerId);
   timerId=setInterval(()=>{
-    timeLeft--; updateTimer();
+    timeLeft--;
+    updateTimer();
     if(timeLeft<=0) endGame();
   },1000);
 }
-function updateTimer(){
-  timerEl.textContent=`${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+function updateTimer() {
+  timerEl.textContent =
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
 }
 
-/* ===== 랭킹 ===== */
-async function saveOnline(name,score){
-  await addDoc(collection(db,"ranking"),{ name, score, date:new Date() });
-  loadRanking();
+/* ===== Firebase 랭킹 ===== */
+async function saveOnline(name, score) {
+  await addDoc(collection(db,"ranking"), {
+    name,
+    score: Number(score),
+    date: new Date()
+  });
 }
-async function loadRanking(){
+async function loadRanking() {
   const q=query(collection(db,"ranking"),orderBy("score","desc"),limit(10));
   const snap=await getDocs(q);
   rankingEl.innerHTML="";
@@ -116,7 +160,7 @@ async function loadRanking(){
 }
 
 /* ===== 게임 로직 ===== */
-function getCell(e){
+function getCell(e) {
   const r=boardEl.getBoundingClientRect();
   const x=e.clientX-r.left, y=e.clientY-r.top;
   const c=Math.floor(x/(r.width/COLS));
@@ -124,11 +168,11 @@ function getCell(e){
   if(rr<0||rr>=ROWS||c<0||c>=COLS) return null;
   return cells[rr*COLS+c];
 }
-function rectSum(a,b){
+function rectSum(a,b) {
   let s=0,p=[];
   for(let r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++)
     for(let c=Math.min(a.c,b.c);c<=Math.max(a.c,b.c);c++)
-      if(board[r][c]>0){s+=board[r][c];p.push([r,c]);}
+      if(board[r][c]>0){ s+=board[r][c]; p.push([r,c]); }
   return {s,p};
 }
 
@@ -145,36 +189,46 @@ boardEl.onpointermove=e=>{
   const b={r:+c.dataset.r,c:+c.dataset.c};
   cells.forEach(x=>{
     const r=+x.dataset.r,c2=+x.dataset.c;
-    if(r>=Math.min(a.r,b.r)&&r<=Math.max(a.r,b.r)&&c2>=Math.min(a.c,b.c)&&c2<=Math.max(a.c,b.c))
+    if(r>=Math.min(a.r,b.r)&&r<=Math.max(a.r,b.r)&&
+       c2>=Math.min(a.c,b.c)&&c2<=Math.max(a.c,b.c))
       x.classList.add("selected");
   });
 };
 boardEl.onpointerup=e=>{
-  if(!selecting) return; selecting=false;
+  if(!selecting) return;
+  selecting=false;
   const c=getCell(e); if(!c) return;
   const a={r:+startCell.dataset.r,c:+startCell.dataset.c};
   const b={r:+c.dataset.r,c:+c.dataset.c};
   const {s,p}=rectSum(a,b);
-  if(s===10&&p.length>=2){
+  if(s===10 && p.length>=2){
     p.forEach(([r,c])=>board[r][c]=0);
-    score+=p.length; scoreEl.textContent=`점수: ${score}`;
+    score+=p.length;
+    scoreEl.textContent=`점수: ${score}`;
     render();
   }
 };
 
-function endGame(){
-  gameOver=true; clearInterval(timerId);
-  const name=prompt("닉네임 입력")||"PLAYER";
-  saveOnline(name.slice(0,10),score);
+/* ===== 게임 종료 ===== */
+async function endGame() {
+  gameOver=true;
+  clearInterval(timerId);
+  const name = prompt("닉네임 입력") || "PLAYER";
+  await saveOnline(name.slice(0,10), score);
+  showMain();
 }
 
 /* ===== 시작 ===== */
 document.getElementById("startBtn").onclick=()=>{
   score=0; timeLeft=GAME_TIME; gameOver=false;
-  scoreEl.textContent="점수: 0"; updateTimer();
-  initBoard(); render(); startTimer();
+  scoreEl.textContent="점수: 0";
+  updateTimer();
+  initBoard(); render();
+  showGame();
+  startTimer();
 };
-loadRanking();
+
+showMain();
 </script>
 
 </body>
