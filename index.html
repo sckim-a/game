@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>사과게임</title>
 <style>
@@ -14,17 +14,17 @@
 
   #board {
     display: grid;
-    grid-template-columns: repeat(10, 1fr); /* 열 10개 동일 비율 */
+    grid-template-columns: repeat(10, 1fr);
     gap: 2px;
     max-width: 100%;
     margin: 20px auto;
     user-select: none;
-    touch-action: none; /* 모바일 터치 스크롤 방지 */
+    touch-action: none;
   }
 
   .cell {
-    aspect-ratio: 1 / 1; /* 정사각형 유지 */
-    font-size: calc(16px + 0.5vw); /* 화면 크기에 맞춰 글씨 확대 */
+    aspect-ratio: 1 / 1;
+    font-size: calc(16px + 0.5vw);
     background: #f2f2f2;
     text-align: center;
     font-weight: bold;
@@ -49,11 +49,26 @@
     cursor: pointer;
     margin-bottom: 10px;
   }
+
+  #scoreHistory {
+    list-style: none;
+    padding: 0;
+    max-width: 300px;
+    margin: 0 auto 20px;
+    text-align: left;
+  }
+
+  #scoreHistory li {
+    background: #f2f2f2;
+    margin: 2px 0;
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
 
-<h1>🍎 사과 게임</h1>
+<h1>🍎 사과게임</h1>
 
 <p id="status">시작 버튼을 누르세요</p>
 <p id="score">점수: 0</p>
@@ -62,6 +77,9 @@
 <button id="startBtn">▶ 시작</button>
 
 <div id="board"></div>
+
+<h2>🏆 점수 이력</h2>
+<ul id="scoreHistory"></ul>
 
 <script>
 const ROWS = 15;
@@ -124,6 +142,28 @@ function updateTimerUI() {
   document.getElementById("timer").textContent = `남은 시간: ${min}:${sec}`;
 }
 
+// ---------- 점수 이력 ----------
+function loadScoreHistory() {
+  const history = JSON.parse(localStorage.getItem("scoreHistory") || "[]");
+  const ul = document.getElementById("scoreHistory");
+  ul.innerHTML = "";
+  history.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = `${item.date} - ${item.score}점`;
+    ul.appendChild(li);
+  });
+}
+
+function addScoreHistory(score) {
+  const history = JSON.parse(localStorage.getItem("scoreHistory") || "[]");
+  const now = new Date();
+  const dateStr = now.toLocaleString();
+  history.unshift({ score, date: dateStr });
+  if (history.length > 10) history.pop();
+  localStorage.setItem("scoreHistory", JSON.stringify(history));
+  loadScoreHistory();
+}
+
 // ---------- 유틸 ----------
 function clearSelection() {
   cells.forEach(c => c.classList.remove("selected"));
@@ -154,13 +194,10 @@ function getCellFromTouch(touch) {
   const rect = boardEl.getBoundingClientRect();
   const x = touch.clientX - rect.left;
   const y = touch.clientY - rect.top;
-
   const cellWidth = rect.width / COLS;
   const cellHeight = rect.height / ROWS;
-
   const c = Math.floor(x / cellWidth);
   const r = Math.floor(y / cellHeight);
-
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
   return cells[r * COLS + c];
 }
@@ -280,6 +317,9 @@ function endGame(message) {
   document.getElementById("status").textContent = message;
   boardEl.style.pointerEvents = "none";
   startBtn.disabled = false;
+
+  // 점수 이력에 추가
+  addScoreHistory(score);
 }
 
 // ---------- 시작 버튼 ----------
@@ -300,8 +340,10 @@ startBtn.addEventListener("click", () => {
 
   startTimer();
 });
+
+// ---------- 초기 점수 이력 로드 ----------
+loadScoreHistory();
 </script>
 
 </body>
 </html>
-
