@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>사과게임</title>
 <style>
   body {
@@ -11,23 +12,21 @@
 
   #board {
     display: grid;
-    grid-template-columns: repeat(10, 30px); /* 열 10 */
+    grid-template-columns: repeat(10, 1fr); /* 열 10개를 동일 비율로 */
     gap: 2px;
-    justify-content: center;
+    max-width: 100%;    /* 화면 너비에 맞춤 */
     margin: 20px auto;
     user-select: none;
-    touch-action: none; /* 모바일 터치 스크롤 방지 */
+    touch-action: none;
   }
 
   .cell {
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 16px;
+    aspect-ratio: 1 / 1; /* 정사각형 유지 */
+    font-size: calc(16px + 0.5vw); /* 화면 크기에 따라 글씨도 확대 */
     background: #f2f2f2;
     text-align: center;
+    font-weight: bold;
+    cursor: pointer;
   }
 
   .selected {
@@ -287,3 +286,4 @@ startBtn.addEventListener("click", () => {
 
 </body>
 </html>
+
