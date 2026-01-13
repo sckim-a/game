@@ -167,14 +167,27 @@ async function saveOnline(name, score) {
     date: new Date()
   });
 }
+
 async function loadRanking() {
-  const q=query(collection(db,"ranking"),orderBy("score","desc"),limit(10));
-  const snap=await getDocs(q);
-  rankingEl.innerHTML="";
-  snap.forEach((d,i)=>{
-    const li=document.createElement("li");
-    li.textContent=`${i+1}위 · ${d.data().name} · ${d.data().score}점`;
+  const q = query(
+    collection(db,"ranking"),
+    orderBy("score","desc"),
+    limit(10)
+  );
+
+  const snap = await getDocs(q);
+  rankingEl.innerHTML = "";
+
+  let rank = 1; // 👈 직접 순위 관리
+
+  snap.forEach(doc => {
+    const data = doc.data();
+
+    const li = document.createElement("li");
+    li.textContent = `${rank}위 · ${data.name} · ${data.score}점`;
     rankingEl.appendChild(li);
+
+    rank++;
   });
 }
 
@@ -252,5 +265,6 @@ showMain();
 
 </body>
 </html>
+
 
 
