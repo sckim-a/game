@@ -14,37 +14,76 @@ body {
 
 .hidden { display: none; }
 
+/* ===== 게임 정보 ===== */
 #info {
   display: flex;
   justify-content: center;
-  gap: 15px;
-  margin: 8px 0;
+  gap: 20px;
+  margin: 10px 0;
+  font-weight: bold;
 }
 
+/* ===== 보드 ===== */
 #board {
-  width: 80vw;              /* 👈 모바일 80% */
+  width: 80vw;
   max-width: 360px;
   margin: auto;
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 2px;
+  gap: 4px;
   touch-action: none;
   user-select: none;
 }
 
+/* ===== 사과 타일 ===== */
 .cell {
   aspect-ratio: 1 / 1;
-  background: #f0f0f0;
+  position: relative;
+  background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 16px;
+  color: white;
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.15s;
 }
 
-.selected { background: #ffb347; }
-.empty { background: #ddd; }
+.cell::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: green;
+  border-radius: 50%;
+  top: 5px;
+  right: 8px;
+}
 
+.cell.empty {
+  background: #ddd;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.selected {
+  outline: 3px solid #ffd43b;
+}
+
+/* ===== 🍎 터짐 애니메이션 ===== */
+@keyframes pop {
+  0%   { transform: scale(1); opacity: 1; }
+  60%  { transform: scale(1.3); }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.pop {
+  animation: pop 0.3s ease-out forwards;
+}
+
+/* ===== 랭킹 ===== */
 #ranking {
   max-width: 320px;
   margin: 10px auto 20px;
@@ -54,11 +93,21 @@ body {
 
 #ranking li {
   list-style: none;
-  background: #fff3cd;
   margin: 4px 0;
   padding: 6px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
+}
+
+/* 🥇🥈🥉 */
+.rank1 { background: gold; font-weight: bold; }
+.rank2 { background: silver; font-weight: bold; }
+.rank3 { background: #cd7f32; font-weight: bold; }
+.rankN { background: #fff3cd; }
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
 }
 </style>
 </head>
@@ -90,7 +139,7 @@ import {
   query, where, orderBy, limit, getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 Firebase 설정 (본인 것으로 교체) */
+/* 🔥 Firebase 설정 */
 const firebaseConfig = {
     apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
     authDomain: "applegame-32c01.firebaseapp.com",
@@ -104,7 +153,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ===== 게임 설정 ===== */
+/* ===== 설정 ===== */
 const ROWS = 12;
 const COLS = 10;
 const GAME_TIME = 120;
@@ -128,20 +177,18 @@ const rankingTitleEl = document.getElementById("rankingTitle");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
 
-/* ===== 월 계산 ===== */
+/* ===== 월 ===== */
 function getCurrentMonth() {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
 
-function updateRankingTitle(month) {
-  const [y, m] = month.split("-");
-  rankingTitleEl.textContent = `📅 ${y}년 ${Number(m)}월 랭킹`;
+function updateRankingTitle(m) {
+  const [y, mo] = m.split("-");
+  rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
 }
 
-/* ===== 화면 전환 ===== */
+/* ===== 화면 ===== */
 function showMain() {
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
@@ -189,16 +236,14 @@ function startTimer() {
 
 function updateTimer() {
   timerEl.textContent =
-    `${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`;
+    `${String(Math.floor(timeLeft / 60)).padStart(2,"0")}:${String(timeLeft % 60).padStart(2,"0")}`;
 }
 
-/* ===== Firebase 랭킹 ===== */
+/* ===== Firebase ===== */
 async function saveOnline(name, score) {
-  const safeScore = Number.isFinite(score) ? score : 0;
-
   await addDoc(collection(db, "ranking"), {
-    name: name || "PLAYER",
-    score: safeScore,
+    name,
+    score,
     month: getCurrentMonth(),
     date: new Date()
   });
@@ -212,7 +257,7 @@ async function loadRanking() {
     collection(db, "ranking"),
     where("month", "==", month),
     orderBy("score", "desc"),
-    limit(10)
+    limit(30)
   );
 
   const snap = await getDocs(q);
@@ -222,96 +267,94 @@ async function loadRanking() {
   snap.forEach(doc => {
     const d = doc.data();
     const li = document.createElement("li");
+    li.className =
+      rank === 1 ? "rank1" :
+      rank === 2 ? "rank2" :
+      rank === 3 ? "rank3" : "rankN";
     li.textContent = `${rank}위 · ${d.name} · ${d.score}점`;
     rankingEl.appendChild(li);
     rank++;
   });
 }
 
-/* ===== 게임 로직 ===== */
+/* ===== 선택 ===== */
 function getCell(e) {
   const r = boardEl.getBoundingClientRect();
   const x = e.clientX - r.left;
   const y = e.clientY - r.top;
   const c = Math.floor(x / (r.width / COLS));
   const rr = Math.floor(y / (r.height / ROWS));
-  if (rr < 0 || rr >= ROWS || c < 0 || c >= COLS) return null;
+  if (rr<0||rr>=ROWS||c<0||c>=COLS) return null;
   return cells[rr * COLS + c];
 }
 
-function rectSum(a, b) {
-  let s = 0, p = [];
-  for (let r = Math.min(a.r, b.r); r <= Math.max(a.r, b.r); r++)
-    for (let c = Math.min(a.c, b.c); c <= Math.max(a.c, b.c); c++)
-      if (board[r][c] > 0) {
-        s += board[r][c];
-        p.push([r, c]);
-      }
-  return { s, p };
+function rectSum(a,b) {
+  let s=0,p=[];
+  for(let r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++)
+    for(let c=Math.min(a.c,b.c);c<=Math.max(a.c,b.c);c++)
+      if(board[r][c]>0){s+=board[r][c];p.push([r,c]);}
+  return {s,p};
 }
 
 boardEl.onpointerdown = e => {
-  if (gameOver) return;
-  const c = getCell(e);
-  if (!c) return;
-  startCell = c;
-  selecting = true;
+  if(gameOver) return;
+  startCell = getCell(e);
+  selecting = !!startCell;
 };
 
 boardEl.onpointermove = e => {
-  if (!selecting) return;
+  if(!selecting) return;
   const c = getCell(e);
-  if (!c) return;
-
-  cells.forEach(x => x.classList.remove("selected"));
-
-  const a = { r: +startCell.dataset.r, c: +startCell.dataset.c };
-  const b = { r: +c.dataset.r, c: +c.dataset.c };
-
-  cells.forEach(x => {
-    const r = +x.dataset.r;
-    const c2 = +x.dataset.c;
-    if (
-      r >= Math.min(a.r, b.r) && r <= Math.max(a.r, b.r) &&
-      c2 >= Math.min(a.c, b.c) && c2 <= Math.max(a.c, b.c)
-    ) x.classList.add("selected");
+  if(!c) return;
+  cells.forEach(x=>x.classList.remove("selected"));
+  const a={r:+startCell.dataset.r,c:+startCell.dataset.c};
+  const b={r:+c.dataset.r,c:+c.dataset.c};
+  cells.forEach(x=>{
+    const r=+x.dataset.r, cc=+x.dataset.c;
+    if(r>=Math.min(a.r,b.r)&&r<=Math.max(a.r,b.r)
+    &&cc>=Math.min(a.c,b.c)&&cc<=Math.max(a.c,b.c))
+      x.classList.add("selected");
   });
 };
 
 boardEl.onpointerup = e => {
-  if (!selecting) return;
-  selecting = false;
+  if(!selecting) return;
+  selecting=false;
+  const c=getCell(e);
+  if(!c) return;
+  const a={r:+startCell.dataset.r,c:+startCell.dataset.c};
+  const b={r:+c.dataset.r,c:+c.dataset.c};
+  const {s,p}=rectSum(a,b);
 
-  const c = getCell(e);
-  if (!c) return;
-
-  const a = { r: +startCell.dataset.r, c: +startCell.dataset.c };
-  const b = { r: +c.dataset.r, c: +c.dataset.c };
-  const { s, p } = rectSum(a, b);
-
-  if (s === 10 && p.length >= 2) {
-    p.forEach(([r, c]) => board[r][c] = 0);
-    score += p.length;
-    scoreEl.textContent = `점수: ${score}`;
-    render();
+  if(s===10 && p.length>=2){
+    p.forEach(([r,c])=>{
+      const cell=cells[r*COLS+c];
+      cell.classList.add("pop");
+    });
+    setTimeout(()=>{
+      p.forEach(([r,c])=>board[r][c]=0);
+      score+=p.length;
+      scoreEl.textContent=`점수: ${score}`;
+      render();
+    },300);
   }
 };
 
-/* ===== 게임 종료 ===== */
+/* ===== 종료 ===== */
 async function endGame() {
   gameOver = true;
   clearInterval(timerId);
   const name = prompt("닉네임 입력") || "PLAYER";
-  await saveOnline(name.slice(0, 10), score);
+  await saveOnline(name.slice(0,10), score);
   showMain();
 }
 
 /* ===== 시작 ===== */
 document.getElementById("startBtn").onclick = () => {
-  score = 0;
-  timeLeft = GAME_TIME;
-  gameOver = false;
-  scoreEl.textContent = "점수: 0";
+  score=0;
+  timeLeft=GAME_TIME;
+  gameOver=false;
+  scoreEl.textContent="점수: 0";
   updateTimer();
   initBoard();
   render();
@@ -321,6 +364,5 @@ document.getElementById("startBtn").onclick = () => {
 
 showMain();
 </script>
-
 </body>
 </html>
