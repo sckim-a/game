@@ -35,15 +35,11 @@ body {
   user-select: none;
 }
 
-/* ===== 🍎 사과 타일 (밝은 색) ===== */
+/* ===== 🍎 사과 (나뭇잎 제거, 밝은 색) ===== */
 .cell {
   aspect-ratio: 1 / 1;
   position: relative;
-  background: radial-gradient(
-    circle at 30% 30%,
-    #ffd6d6,
-    #ff6b6b
-  );
+  background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff6b6b);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -51,48 +47,29 @@ body {
   font-weight: 900;
   font-size: 18px;
   color: #ffffff;
-  text-shadow:
-    0 0 3px rgba(0,0,0,0.9),
-    1px 1px 2px rgba(0,0,0,0.8);
-  box-shadow:
-    inset -2px -2px 4px rgba(0,0,0,0.15),
-    0 2px 4px rgba(0,0,0,0.25);
+  text-shadow: 0 0 3px rgba(0,0,0,0.9);
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.15),
+              0 2px 4px rgba(0,0,0,0.25);
 }
 
-.cell::after {
-  content: "";
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: #2f9e44;
-  border-radius: 50%;
-  top: 5px;
-  right: 8px;
-}
-
-/* 빈칸 */
 .cell.empty {
   background: #e0e0e0;
   border-radius: 6px;
   box-shadow: none;
   color: transparent;
-  text-shadow: none;
 }
 
 .selected {
   outline: 3px solid #ffd43b;
 }
 
-/* ===== 🍎 터짐 ===== */
+/* ===== 터짐 ===== */
 @keyframes pop {
-  0%   { transform: scale(1); opacity: 1; }
-  60%  { transform: scale(1.35); }
+  0% { transform: scale(1); opacity: 1; }
+  60% { transform: scale(1.35); }
   100% { transform: scale(0); opacity: 0; }
 }
-
-.pop {
-  animation: pop 0.3s ease-out forwards;
-}
+.pop { animation: pop 0.3s ease-out forwards; }
 
 /* ===== 랭킹 ===== */
 #ranking {
@@ -101,7 +78,6 @@ body {
   padding: 0;
   text-align: left;
 }
-
 #ranking li {
   list-style: none;
   margin: 4px 0;
@@ -109,7 +85,6 @@ body {
   border-radius: 6px;
   font-size: 14px;
 }
-
 .rank1 { background: gold; font-weight: bold; }
 .rank2 { background: silver; font-weight: bold; }
 .rank3 { background: #cd7f32; font-weight: bold; }
@@ -126,14 +101,12 @@ button {
 
 <h2>🍎 사과게임</h2>
 
-<!-- ===== 메인 ===== -->
 <div id="mainScreen">
   <button id="startBtn">▶ 게임 시작</button>
   <h3 id="rankingTitle"></h3>
   <ol id="ranking"></ol>
 </div>
 
-<!-- ===== 게임 ===== -->
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
@@ -149,7 +122,7 @@ import {
   query, where, orderBy, limit, getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 Firebase 설정 */
+/* Firebase */
 const firebaseConfig = {
     apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
     authDomain: "applegame-32c01.firebaseapp.com",
@@ -158,27 +131,27 @@ const firebaseConfig = {
     messagingSenderId: "471752911086",
     appId: "1:471752911086:web:6ea47c3952412fe650ebff",
     measurementId: "G-4GETLD0JGB"
-  };
-
+ };
+  
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ===== 설정 ===== */
+/* 설정 */
 const ROWS = 12;
 const COLS = 10;
 const GAME_TIME = 120;
 
-/* ===== 상태 ===== */
+/* 상태 */
 let board = [];
 let cells = [];
-let startCell = null;
 let selecting = false;
+let visited = [];
 let score = 0;
 let timeLeft = GAME_TIME;
 let timerId = null;
 let gameOver = true;
 
-/* ===== DOM ===== */
+/* DOM */
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
@@ -187,40 +160,36 @@ const rankingTitleEl = document.getElementById("rankingTitle");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
 
-/* ===== 월 ===== */
+/* 월 */
 function getCurrentMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
-
 function updateRankingTitle(m) {
   const [y, mo] = m.split("-");
   rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
 }
 
-/* ===== 화면 ===== */
+/* 화면 */
 function showMain() {
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
   loadRanking();
 }
-
 function showGame() {
   mainScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 }
 
-/* ===== 보드 ===== */
+/* 보드 */
 function initBoard() {
   board = Array.from({ length: ROWS }, () =>
     Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
   );
 }
-
 function render() {
   boardEl.innerHTML = "";
   cells = [];
-
   board.forEach((row, r) => {
     row.forEach((v, c) => {
       const d = document.createElement("div");
@@ -234,7 +203,7 @@ function render() {
   });
 }
 
-/* ===== 타이머 ===== */
+/* 타이머 */
 function startTimer() {
   clearInterval(timerId);
   timerId = setInterval(() => {
@@ -243,51 +212,42 @@ function startTimer() {
     if (timeLeft <= 0) endGame();
   }, 1000);
 }
-
 function updateTimer() {
   timerEl.textContent =
-    `${String(Math.floor(timeLeft / 60)).padStart(2,"0")}:${String(timeLeft % 60).padStart(2,"0")}`;
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
 }
 
-/* ===== Firebase ===== */
+/* 랭킹 */
 async function saveOnline(name, score) {
-  await addDoc(collection(db, "ranking"), {
-    name,
-    score,
+  await addDoc(collection(db,"ranking"), {
+    name, score,
     month: getCurrentMonth(),
     date: new Date()
   });
 }
-
 async function loadRanking() {
-  const month = getCurrentMonth();
-  updateRankingTitle(month);
-
+  const m = getCurrentMonth();
+  updateRankingTitle(m);
   const q = query(
-    collection(db, "ranking"),
-    where("month", "==", month),
-    orderBy("score", "desc"),
+    collection(db,"ranking"),
+    where("month","==",m),
+    orderBy("score","desc"),
     limit(30)
   );
-
   const snap = await getDocs(q);
-  rankingEl.innerHTML = "";
-
-  let rank = 1;
-  snap.forEach(doc => {
-    const d = doc.data();
-    const li = document.createElement("li");
-    li.className =
-      rank === 1 ? "rank1" :
-      rank === 2 ? "rank2" :
-      rank === 3 ? "rank3" : "rankN";
-    li.textContent = `${rank}위 · ${d.name} · ${d.score}점`;
+  rankingEl.innerHTML="";
+  let rank=1;
+  snap.forEach(doc=>{
+    const d=doc.data();
+    const li=document.createElement("li");
+    li.className = rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"rankN";
+    li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
     rankingEl.appendChild(li);
     rank++;
   });
 }
 
-/* ===== 셀 인식 (모바일 정확) ===== */
+/* 셀 찾기 */
 function getCell(e) {
   const p = e.touches ? e.touches[0] : e;
   const el = document.elementFromPoint(p.clientX, p.clientY);
@@ -295,70 +255,72 @@ function getCell(e) {
   return el;
 }
 
-/* ===== 합 계산 ===== */
-function rectSum(a,b) {
-  let s=0,p=[];
-  for(let r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++)
-    for(let c=Math.min(a.c,b.c);c<=Math.max(a.c,b.c);c++)
-      if(board[r][c]>0){s+=board[r][c];p.push([r,c]);}
-  return {s,p};
-}
-
-/* ===== 드래그 ===== */
+/* 드래그 */
 boardEl.onpointerdown = e => {
-  if(gameOver) return;
+  if (gameOver) return;
   boardEl.setPointerCapture(e.pointerId);
-  startCell = getCell(e);
-  selecting = !!startCell;
+  visited = [];
+  selecting = true;
 };
 
 boardEl.onpointermove = e => {
-  if(!selecting) return;
+  if (!selecting) return;
   const c = getCell(e);
-  if(!c) return;
-  cells.forEach(x=>x.classList.remove("selected"));
-  const a={r:+startCell.dataset.r,c:+startCell.dataset.c};
-  const b={r:+c.dataset.r,c:+c.dataset.c};
+  if (!c) return;
+  const r = +c.dataset.r;
+  const col = +c.dataset.c;
+  visited.push([r, col]);
+
+  const rows = visited.map(v=>v[0]);
+  const cols = visited.map(v=>v[1]);
+  const minR=Math.min(...rows), maxR=Math.max(...rows);
+  const minC=Math.min(...cols), maxC=Math.max(...cols);
+
   cells.forEach(x=>{
-    const r=+x.dataset.r, cc=+x.dataset.c;
-    if(r>=Math.min(a.r,b.r)&&r<=Math.max(a.r,b.r)
-    &&cc>=Math.min(a.c,b.c)&&cc<=Math.max(a.c,b.c))
-      x.classList.add("selected");
+    const rr=+x.dataset.r, cc=+x.dataset.c;
+    x.classList.toggle("selected",
+      rr>=minR && rr<=maxR && cc>=minC && cc<=maxC
+    );
   });
 };
 
-boardEl.onpointerup = e => {
-  if(!selecting) return;
+boardEl.onpointerup = () => {
+  if (!selecting) return;
   selecting=false;
-  const c=getCell(e);
-  if(!c) return;
-  const a={r:+startCell.dataset.r,c:+startCell.dataset.c};
-  const b={r:+c.dataset.r,c:+c.dataset.c};
-  const {s,p}=rectSum(a,b);
 
-  if(s===10 && p.length>=2){
-    p.forEach(([r,c])=>{
-      cells[r*COLS+c].classList.add("pop");
-    });
+  const rows = visited.map(v=>v[0]);
+  const cols = visited.map(v=>v[1]);
+  if (!rows.length) return;
+
+  const minR=Math.min(...rows), maxR=Math.max(...rows);
+  const minC=Math.min(...cols), maxC=Math.max(...cols);
+
+  let sum=0, pos=[];
+  for(let r=minR;r<=maxR;r++)
+    for(let c=minC;c<=maxC;c++)
+      if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
+
+  if(sum===10 && pos.length>=2){
+    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
-      p.forEach(([r,c])=>board[r][c]=0);
-      score+=p.length;
+      pos.forEach(([r,c])=>board[r][c]=0);
+      score+=pos.length;
       scoreEl.textContent=`점수: ${score}`;
       render();
     },300);
   }
 };
 
-/* ===== 종료 ===== */
+/* 종료 */
 async function endGame() {
-  gameOver = true;
+  gameOver=true;
   clearInterval(timerId);
   const name = prompt("닉네임 입력") || "PLAYER";
   await saveOnline(name.slice(0,10), score);
   showMain();
 }
 
-/* ===== 시작 ===== */
+/* 시작 */
 document.getElementById("startBtn").onclick = () => {
   score=0;
   timeLeft=GAME_TIME;
