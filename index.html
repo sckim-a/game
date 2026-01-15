@@ -14,7 +14,7 @@ body {
 
 .hidden { display: none; }
 
-/* ===== 게임 정보 ===== */
+/* ===== 정보 ===== */
 #info {
   display: flex;
   justify-content: center;
@@ -35,20 +35,28 @@ body {
   user-select: none;
 }
 
-/* ===== 사과 타일 ===== */
+/* ===== 🍎 사과 타일 (밝은 색) ===== */
 .cell {
   aspect-ratio: 1 / 1;
   position: relative;
-  background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a);
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffd6d6,
+    #ff6b6b
+  );
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
-  color: white;
-  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.2);
-  transition: transform 0.15s;
+  font-weight: 900;
+  font-size: 18px;
+  color: #ffffff;
+  text-shadow:
+    0 0 3px rgba(0,0,0,0.9),
+    1px 1px 2px rgba(0,0,0,0.8);
+  box-shadow:
+    inset -2px -2px 4px rgba(0,0,0,0.15),
+    0 2px 4px rgba(0,0,0,0.25);
 }
 
 .cell::after {
@@ -56,26 +64,29 @@ body {
   position: absolute;
   width: 6px;
   height: 6px;
-  background: green;
+  background: #2f9e44;
   border-radius: 50%;
   top: 5px;
   right: 8px;
 }
 
+/* 빈칸 */
 .cell.empty {
-  background: #ddd;
+  background: #e0e0e0;
   border-radius: 6px;
   box-shadow: none;
+  color: transparent;
+  text-shadow: none;
 }
 
 .selected {
   outline: 3px solid #ffd43b;
 }
 
-/* ===== 🍎 터짐 애니메이션 ===== */
+/* ===== 🍎 터짐 ===== */
 @keyframes pop {
   0%   { transform: scale(1); opacity: 1; }
-  60%  { transform: scale(1.3); }
+  60%  { transform: scale(1.35); }
   100% { transform: scale(0); opacity: 0; }
 }
 
@@ -99,7 +110,6 @@ body {
   font-size: 14px;
 }
 
-/* 🥇🥈🥉 */
 .rank1 { background: gold; font-weight: bold; }
 .rank2 { background: silver; font-weight: bold; }
 .rank3 { background: #cd7f32; font-weight: bold; }
@@ -116,14 +126,14 @@ button {
 
 <h2>🍎 사과게임</h2>
 
-<!-- ===== 메인 화면 ===== -->
+<!-- ===== 메인 ===== -->
 <div id="mainScreen">
   <button id="startBtn">▶ 게임 시작</button>
   <h3 id="rankingTitle"></h3>
   <ol id="ranking"></ol>
 </div>
 
-<!-- ===== 게임 화면 ===== -->
+<!-- ===== 게임 ===== -->
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
@@ -277,17 +287,15 @@ async function loadRanking() {
   });
 }
 
-/* ===== 선택 ===== */
+/* ===== 셀 인식 (모바일 정확) ===== */
 function getCell(e) {
-  const r = boardEl.getBoundingClientRect();
-  const x = e.clientX - r.left;
-  const y = e.clientY - r.top;
-  const c = Math.floor(x / (r.width / COLS));
-  const rr = Math.floor(y / (r.height / ROWS));
-  if (rr<0||rr>=ROWS||c<0||c>=COLS) return null;
-  return cells[rr * COLS + c];
+  const p = e.touches ? e.touches[0] : e;
+  const el = document.elementFromPoint(p.clientX, p.clientY);
+  if (!el || !el.classList.contains("cell")) return null;
+  return el;
 }
 
+/* ===== 합 계산 ===== */
 function rectSum(a,b) {
   let s=0,p=[];
   for(let r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++)
@@ -296,8 +304,10 @@ function rectSum(a,b) {
   return {s,p};
 }
 
+/* ===== 드래그 ===== */
 boardEl.onpointerdown = e => {
   if(gameOver) return;
+  boardEl.setPointerCapture(e.pointerId);
   startCell = getCell(e);
   selecting = !!startCell;
 };
@@ -328,8 +338,7 @@ boardEl.onpointerup = e => {
 
   if(s===10 && p.length>=2){
     p.forEach(([r,c])=>{
-      const cell=cells[r*COLS+c];
-      cell.classList.add("pop");
+      cells[r*COLS+c].classList.add("pop");
     });
     setTimeout(()=>{
       p.forEach(([r,c])=>board[r][c]=0);
