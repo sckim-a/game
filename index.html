@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🍎 사과게임</title>
+<title>사과게임</title>
 
 <style>
 body {
@@ -14,7 +14,7 @@ body {
 
 .hidden { display: none; }
 
-/* ===== 정보 ===== */
+/* 정보 */
 #info {
   display: flex;
   justify-content: center;
@@ -23,7 +23,7 @@ body {
   font-weight: bold;
 }
 
-/* ===== 보드 ===== */
+/* 보드 */
 #board {
   width: 80vw;
   max-width: 360px;
@@ -35,48 +35,43 @@ body {
   user-select: none;
 }
 
-/* ===== 사과 ===== */
-
+/* 사과 */
 .cell {
   aspect-ratio: 1 / 1;
-  background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff6b6b);
+  background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff4d4d);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-
   font-weight: 900;
-  font-size: 22px;          /* ✅ 숫자만 키움 */
-  color: #ffffff;
-  text-shadow: 0 0 3px rgba(0,0,0,0.9);  /* 기존 느낌 유지 */
-
-  box-shadow:
-    inset -2px -2px 4px rgba(0,0,0,0.15),
-    0 2px 4px rgba(0,0,0,0.25);
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,0.8);
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.2),
+              0 2px 4px rgba(0,0,0,0.25);
 }
 
 .cell.empty {
-  background: #e0e0e0;
+  background: #ddd;
   border-radius: 6px;
   color: transparent;
+  box-shadow: none;
 }
 
+/* 선택 영역 */
 .selected {
   outline: 3px solid #ffd43b;
-  filter: brightness(1.15);
 }
 
-/* ===== 터짐 ===== */
+/* 터짐 */
 @keyframes pop {
   0% { transform: scale(1); opacity: 1; }
   60% { transform: scale(1.35); }
   100% { transform: scale(0); opacity: 0; }
 }
-.pop {
-  animation: pop 0.3s ease-out forwards;
-}
+.pop { animation: pop 0.3s ease-out forwards; }
 
-/* ===== 랭킹 ===== */
+/* 랭킹 */
 #ranking {
   max-width: 320px;
   margin: 10px auto 20px;
@@ -104,7 +99,7 @@ button {
 
 <body>
 
-<h2 id="logo">🍎 사과게임</h2>
+<h2 id="title">🍎 사과게임</h2>
 
 <div id="mainScreen">
   <button id="startBtn">▶ 시작</button>
@@ -115,8 +110,7 @@ button {
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
-    <div id="timer"></div>
-    <button id="quitBtn" class="hidden">종료</button>
+    <div id="timer">02:00</div>
   </div>
   <div id="board"></div>
 </div>
@@ -132,7 +126,7 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
   authDomain: "applegame-32c01.firebaseapp.com",
-  projectId: "applegame-32c01"
+  projectId: "applegame-32c01",
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -145,8 +139,6 @@ const GAME_TIME = 120;
 /* 효과음 */
 const sfxPop = new Audio("pop.wav");
 const sfxEnd = new Audio("end.wav");
-sfxPop.volume = 0.6;
-sfxEnd.volume = 0.7;
 
 /* 상태 */
 let board = [];
@@ -163,19 +155,19 @@ let infiniteMode = false;
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-const rankingEl = document.getElementById("ranking");
-const rankingTitleEl = document.getElementById("rankingTitle");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
+const rankingEl = document.getElementById("ranking");
+const rankingTitleEl = document.getElementById("rankingTitle");
 
 /* 월 */
 function getCurrentMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
-function updateRankingTitle() {
-  const [y, m] = getCurrentMonth().split("-");
-  rankingTitleEl.textContent = `📅 ${y}년 ${Number(m)}월 랭킹`;
+function updateRankingTitle(m) {
+  const [y, mo] = m.split("-");
+  rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
 }
 
 /* 화면 */
@@ -191,18 +183,18 @@ function showGame() {
 
 /* 보드 */
 function initBoard() {
-  board = Array.from({length:ROWS},
-    ()=>Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1)
+  board = Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
   );
 }
 function render() {
-  boardEl.innerHTML="";
-  cells=[];
+  boardEl.innerHTML = "";
+  cells = [];
   board.forEach((row,r)=>{
     row.forEach((v,c)=>{
-      const d=document.createElement("div");
-      d.className="cell"+(v===0?" empty":"");
-      d.textContent=v||"";
+      const d = document.createElement("div");
+      d.className = "cell" + (v===0?" empty":"");
+      d.textContent = v || "";
       d.dataset.r=r;
       d.dataset.c=c;
       boardEl.appendChild(d);
@@ -213,158 +205,157 @@ function render() {
 
 /* 타이머 */
 function startTimer() {
-  if(infiniteMode){
-    timerEl.textContent="∞";
+  clearInterval(timerId);
+  if (infiniteMode) {
+    timerEl.textContent = "∞";
     return;
   }
-  clearInterval(timerId);
-  timerEl.textContent="02:00";
-  timerId=setInterval(()=>{
+  timerId = setInterval(()=>{
     timeLeft--;
-    timerEl.textContent=
+    timerEl.textContent =
       `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
-    if(timeLeft<=0) endGame();
+    if (timeLeft<=0) endGame();
   },1000);
 }
 
 /* 랭킹 */
-async function saveOnline(name,score,mode){
-  await addDoc(collection(db,"ranking"),{
-    name, score, mode,
-    month:getCurrentMonth(),
-    date:new Date()
+async function saveOnline(name, score) {
+  await addDoc(collection(db,"ranking"), {
+    name, score,
+    month: getCurrentMonth(),
+    date: new Date()
   });
 }
-async function loadRanking(){
-  updateRankingTitle();
-  const q=query(
+async function loadRanking() {
+  const m = getCurrentMonth();
+  updateRankingTitle(m);
+  const q = query(
     collection(db,"ranking"),
-    where("month","==",getCurrentMonth()),
+    where("month","==",m),
     orderBy("score","desc"),
     limit(30)
   );
-  const snap=await getDocs(q);
+  const snap = await getDocs(q);
   rankingEl.innerHTML="";
   let rank=1;
   snap.forEach(doc=>{
     const d=doc.data();
     const li=document.createElement("li");
-    li.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"rankN";
+    li.className = rank<=3?`rank${rank}`:"rankN";
     li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
     rankingEl.appendChild(li);
     rank++;
   });
 }
 
-/* 드래그 선택 */
+/* 10 가능 체크 */
+function canMakeTen() {
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      let sum=0;
+      for(let rr=r;rr<ROWS;rr++){
+        for(let cc=c;cc<COLS;cc++){
+          sum+=board[rr][cc];
+          if(sum===10) return true;
+          if(sum>10) break;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/* 선택 */
 boardEl.onpointerdown = e => {
-  if(gameOver) return;
-  selecting = true;
-  visited = [];
-
-  const el = document.elementFromPoint(e.clientX,e.clientY);
-  if(!el || !el.classList.contains("cell")) return;
-
-  visited.push([+el.dataset.r,+el.dataset.c]);
+  if (gameOver) return;
+  visited=[];
+  selecting=true;
 };
-
 boardEl.onpointermove = e => {
-  if(!selecting) return;
-
+  if (!selecting) return;
   const el = document.elementFromPoint(e.clientX,e.clientY);
-  if(!el || !el.classList.contains("cell")) return;
-
-  const r=+el.dataset.r,c=+el.dataset.c;
-  if(visited.some(v=>v[0]===r&&v[1]===c)) return;
+  if (!el || !el.classList.contains("cell")) return;
+  const r=+el.dataset.r, c=+el.dataset.c;
+  if (visited.some(v=>v[0]===r&&v[1]===c)) return;
   visited.push([r,c]);
-
-  const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
-  const minR=Math.min(...rs),maxR=Math.max(...rs);
-  const minC=Math.min(...cs),maxC=Math.max(...cs);
-
-  cells.forEach(cell=>{
-    const rr=+cell.dataset.r,cc=+cell.dataset.c;
-    cell.classList.toggle(
-      "selected",
-      rr>=minR&&rr<=maxR&&cc>=minC&&cc<=maxC
-    );
+  const rs=visited.map(v=>v[0]);
+  const cs=visited.map(v=>v[1]);
+  const minR=Math.min(...rs), maxR=Math.max(...rs);
+  const minC=Math.min(...cs), maxC=Math.max(...cs);
+  cells.forEach(x=>{
+    const rr=+x.dataset.r, cc=+x.dataset.c;
+    x.classList.toggle("selected",
+      rr>=minR&&rr<=maxR&&cc>=minC&&cc<=maxC);
   });
 };
-
 boardEl.onpointerup = () => {
   selecting=false;
-  cells.forEach(c=>c.classList.remove("selected"));
-  if(!visited.length) return;
+  if (!visited.length) return;
 
-  const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
-  const minR=Math.min(...rs),maxR=Math.max(...rs);
-  const minC=Math.min(...cs),maxC=Math.max(...cs);
+  const rs=visited.map(v=>v[0]);
+  const cs=visited.map(v=>v[1]);
+  const minR=Math.min(...rs), maxR=Math.max(...rs);
+  const minC=Math.min(...cs), maxC=Math.max(...cs);
 
-  let sum=0,pos=[];
+  let sum=0, pos=[];
   for(let r=minR;r<=maxR;r++)
     for(let c=minC;c<=maxC;c++)
       if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
 
   if(sum===10 && pos.length>=2){
-    sfxPop.currentTime=0;
     sfxPop.play();
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
+    setTimeout(()=>{
+      pos.forEach(([r,c])=>board[r][c]=0);
+      score+=pos.length;
+      scoreEl.textContent=`점수: ${score}`;
+      render();
 
-setTimeout(()=>{
-  pos.forEach(([r,c])=>board[r][c]=0);
-  score+=pos.length;
-  scoreEl.textContent = `점수: ${score}`;
-  render();
-
-  // ⏱ 터짐 연출 후 종료
-  if (!canMakeTen()) {
-  if (infiniteMode) {
-    alert("⚠️ 더 이상 10을 만들 수 없습니다!");
-  } else {
-    setTimeout(() => endGame(), 200);
-  }
-}
-
-},300);
-
+      if (!canMakeTen()) {
+        if (infiniteMode) {
+          alert("⚠️ 더 이상 10을 만들 수 없습니다!");
+        } else {
+          endGame();
+        }
+      }
+    },300);
   }
 };
 
 /* 종료 */
-async function endGame(){
+async function endGame() {
   gameOver=true;
   clearInterval(timerId);
   sfxEnd.play();
-  const name=prompt("닉네임 입력")||"PLAYER";
-  await saveOnline(name.slice(0,10),score,infiniteMode?"무제한":"일반");
+  const name = prompt("닉네임 입력") || "PLAYER";
+  await saveOnline(name.slice(0,10), score);
   showMain();
 }
 
-quitBtn.onclick = () => {
-  if (!infiniteMode) return;
-  endGame(); // 🔥 여기서 기록 등록됨
-};
-
 /* 시작 */
-const quitBtn = document.getElementById("quitBtn");
-
-function startGame(inf){
-  infiniteMode = inf;
-  gameOver = false;
-  score = 0;
-  timeLeft = GAME_TIME;
-  scoreEl.textContent = "점수: 0";
-
-  quitBtn.classList.toggle("hidden", !infiniteMode);
-
+document.getElementById("startBtn").onclick = () => {
+  infiniteMode = false;
+  score=0;
+  timeLeft=GAME_TIME;
+  gameOver=false;
+  scoreEl.textContent="점수: 0";
   initBoard();
   render();
   showGame();
   startTimer();
-}
+};
 
-document.getElementById("startBtn").onclick=()=>startGame(false);
-document.getElementById("logo").onclick=()=>startGame(true);
+/* 아이콘 클릭 → 무제한 */
+document.getElementById("title").onclick = () => {
+  infiniteMode = true;
+  score=0;
+  gameOver=false;
+  scoreEl.textContent="점수: 0";
+  initBoard();
+  render();
+  showGame();
+  startTimer();
+};
 
 showMain();
 </script>
