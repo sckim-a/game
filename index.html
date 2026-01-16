@@ -312,11 +312,11 @@ boardEl.onpointerup = () => {
       render();
 
       if (!canMakeTen()) {
-        if (infiniteMode) {
+        
           alert("⚠️ 더 이상 10을 만들 수 없습니다!");
-        } else {
+        
           endGame();
-        }
+        
       }
     },300);
   }
