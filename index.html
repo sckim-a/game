@@ -76,6 +76,7 @@ body {
   margin: 4px 0;
   padding: 6px;
   border-radius: 6px;
+  font-size: 14px;
 }
 .rank1 { background: gold; font-weight: bold; }
 .rank2 { background: silver; font-weight: bold; }
@@ -95,6 +96,12 @@ button {
 
 <div id="mainScreen">
   <button id="startBtn">▶ 게임 시작</button>
+
+  <!-- 월별 랭킹 안내 -->
+  <div style="font-size:14px;color:#666;margin-top:10px">
+    🏆 이번 달 월별 랭킹
+  </div>
+
   <h3 id="rankingTitle"></h3>
   <ol id="ranking"></ol>
 </div>
@@ -166,7 +173,7 @@ function updateRankingTitle(m) {
 function showMain() {
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
-  loadRanking();
+  loadRanking();   // ⭐ 메인화면에서 월별 랭킹 표시
 }
 function showGame() {
   mainScreen.classList.add("hidden");
