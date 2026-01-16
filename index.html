@@ -58,6 +58,7 @@ body {
 
 .selected {
   outline: 3px solid #ffd43b;
+  filter: brightness(1.15);
 }
 
 /* ===== 터짐 ===== */
@@ -146,6 +147,7 @@ sfxEnd.volume = 0.7;
 let board = [];
 let cells = [];
 let visited = [];
+let selecting = false;
 let score = 0;
 let timeLeft = GAME_TIME;
 let timerId = null;
@@ -184,7 +186,9 @@ function showGame() {
 
 /* 보드 */
 function initBoard() {
-  board = Array.from({length:ROWS},()=>Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1));
+  board = Array.from({length:ROWS},
+    ()=>Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1)
+  );
 }
 function render() {
   boardEl.innerHTML="";
@@ -209,9 +213,11 @@ function startTimer() {
     return;
   }
   clearInterval(timerId);
+  timerEl.textContent="02:00";
   timerId=setInterval(()=>{
     timeLeft--;
-    timerEl.textContent=`${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+    timerEl.textContent=
+      `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
     if(timeLeft<=0) endGame();
   },1000);
 }
@@ -245,42 +251,46 @@ async function loadRanking(){
   });
 }
 
-/* 10 가능 체크 */
-function canMakeTen(){
-  for(let r1=0;r1<ROWS;r1++)
-    for(let c1=0;c1<COLS;c1++)
-      for(let r2=r1;r2<ROWS;r2++)
-        for(let c2=c1;c2<COLS;c2++){
-          let sum=0;
-          for(let r=r1;r<=r2;r++)
-            for(let c=c1;c<=c2;c++)
-              sum+=board[r][c];
-          if(sum===10 && (r2-r1+1)*(c2-c1+1)>=2) return true;
-        }
-  return false;
-}
+/* 드래그 선택 */
+boardEl.onpointerdown = e => {
+  if(gameOver) return;
+  selecting = true;
+  visited = [];
 
-/* 드래그 */
-boardEl.onpointerdown=()=>{ visited=[]; };
-boardEl.onpointermove=e=>{
-  const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el||!el.classList.contains("cell"))return;
+  const el = document.elementFromPoint(e.clientX,e.clientY);
+  if(!el || !el.classList.contains("cell")) return;
+
+  visited.push([+el.dataset.r,+el.dataset.c]);
+};
+
+boardEl.onpointermove = e => {
+  if(!selecting) return;
+
+  const el = document.elementFromPoint(e.clientX,e.clientY);
+  if(!el || !el.classList.contains("cell")) return;
+
   const r=+el.dataset.r,c=+el.dataset.c;
-  if(visited.some(v=>v[0]===r&&v[1]===c))return;
+  if(visited.some(v=>v[0]===r&&v[1]===c)) return;
   visited.push([r,c]);
 
   const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
   const minR=Math.min(...rs),maxR=Math.max(...rs);
   const minC=Math.min(...cs),maxC=Math.max(...cs);
 
-  cells.forEach(x=>{
-    const rr=+x.dataset.r,cc=+x.dataset.c;
-    x.classList.toggle("selected",rr>=minR&&rr<=maxR&&cc>=minC&&cc<=maxC);
+  cells.forEach(cell=>{
+    const rr=+cell.dataset.r,cc=+cell.dataset.c;
+    cell.classList.toggle(
+      "selected",
+      rr>=minR&&rr<=maxR&&cc>=minC&&cc<=maxC
+    );
   });
 };
 
-boardEl.onpointerup=()=>{
-  if(!visited.length)return;
+boardEl.onpointerup = () => {
+  selecting=false;
+  cells.forEach(c=>c.classList.remove("selected"));
+  if(!visited.length) return;
+
   const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
   const minR=Math.min(...rs),maxR=Math.max(...rs);
   const minC=Math.min(...cs),maxC=Math.max(...cs);
@@ -290,17 +300,15 @@ boardEl.onpointerup=()=>{
     for(let c=minC;c<=maxC;c++)
       if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
 
-  if(sum===10&&pos.length>=2){
+  if(sum===10 && pos.length>=2){
     sfxPop.currentTime=0;
     sfxPop.play();
-
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
       score+=pos.length;
       scoreEl.textContent=`점수: ${score}`;
       render();
-      if(!infiniteMode && !canMakeTen()) endGame();
     },300);
   }
 };
@@ -318,6 +326,7 @@ async function endGame(){
 /* 시작 */
 function startGame(inf){
   infiniteMode=inf;
+  gameOver=false;
   score=0;
   timeLeft=GAME_TIME;
   scoreEl.textContent="점수: 0";
