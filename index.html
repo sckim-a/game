@@ -55,9 +55,7 @@ body {
   color: transparent;
 }
 
-.selected {
-  outline: 3px solid #ffd43b;
-}
+.selected { outline: 3px solid #ffd43b; }
 
 /* 터짐 */
 @keyframes pop {
@@ -149,8 +147,20 @@ let infiniteMode = false;
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
+const rankingEl = document.getElementById("ranking");
+const rankingTitleEl = document.getElementById("rankingTitle");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
+
+/* 월 */
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function updateRankingTitle(m) {
+  const [y, mo] = m.split("-");
+  rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
+}
 
 /* 화면 */
 function showMain() {
@@ -195,7 +205,8 @@ function canMakeTen() {
           for (let r=r1;r<=r2;r++)
             for (let c=c1;c<=c2;c++)
               if (board[r][c]>0) {
-                sum+=board[r][c]; count++;
+                sum+=board[r][c];
+                count++;
               }
           if (sum===10 && count>=2) return true;
         }
@@ -218,7 +229,7 @@ function startTimer() {
 }
 
 /* 드래그 */
-boardEl.onpointerdown = e => {
+boardEl.onpointerdown = () => {
   if (gameOver) return;
   visited=[]; selecting=true;
 };
@@ -233,6 +244,7 @@ boardEl.onpointermove = e => {
 boardEl.onpointerup = () => {
   selecting=false;
   if (!visited.length) return;
+
   const rs=visited.map(v=>v[0]), cs=visited.map(v=>v[1]);
   const minR=Math.min(...rs), maxR=Math.max(...rs);
   const minC=Math.min(...cs), maxC=Math.max(...cs);
@@ -255,10 +267,52 @@ boardEl.onpointerup = () => {
   }
 };
 
+/* 랭킹 저장 */
+async function saveOnline(name, score) {
+  await addDoc(collection(db,"ranking"), {
+    name,
+    score,
+    month: getCurrentMonth(),
+    date: new Date()
+  });
+}
+
+/* 랭킹 불러오기 */
+async function loadRanking() {
+  const m = getCurrentMonth();
+  updateRankingTitle(m);
+
+  const q = query(
+    collection(db,"ranking"),
+    where("month","==",m),
+    orderBy("score","desc"),
+    limit(30)
+  );
+
+  const snap = await getDocs(q);
+  rankingEl.innerHTML="";
+  let rank=1;
+  snap.forEach(doc=>{
+    const d=doc.data();
+    const li=document.createElement("li");
+    li.className =
+      rank===1?"rank1":
+      rank===2?"rank2":
+      rank===3?"rank3":"rankN";
+    li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
+    rankingEl.appendChild(li);
+    rank++;
+  });
+}
+
 /* 종료 */
-function endGame() {
+async function endGame() {
   gameOver=true;
   clearInterval(timerId);
+
+  const name = prompt("닉네임 입력") || "PLAYER";
+  await saveOnline(name.slice(0,10), score);
+
   showMain();
 }
 
