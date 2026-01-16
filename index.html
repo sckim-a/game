@@ -141,6 +141,15 @@ const ROWS = 12;
 const COLS = 10;
 const GAME_TIME = 120;
 
+/* 효과음 */
+const sfxSelect = new Audio("select.wav");
+const sfxPop = new Audio("pop.wav");
+const sfxEnd = new Audio("end.wav");
+
+sfxSelect.volume = 0.4;
+sfxPop.volume = 0.6;
+sfxEnd.volume = 0.7;
+
 /* 상태 */
 let board = [];
 let cells = [];
@@ -267,9 +276,17 @@ boardEl.onpointermove = e => {
   if (!selecting) return;
   const c = getCell(e);
   if (!c) return;
+
   const r = +c.dataset.r;
   const col = +c.dataset.c;
+
+  // 중복 방지
+  if (visited.some(v => v[0] === r && v[1] === col)) return;
+
   visited.push([r, col]);
+
+  sfxSelect.currentTime = 0;
+  sfxSelect.play();
 
   const rows = visited.map(v=>v[0]);
   const cols = visited.map(v=>v[1]);
@@ -301,6 +318,9 @@ boardEl.onpointerup = () => {
       if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
 
   if(sum===10 && pos.length>=2){
+    sfxPop.currentTime = 0;
+    sfxPop.play();
+  
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
@@ -313,8 +333,12 @@ boardEl.onpointerup = () => {
 
 /* 종료 */
 async function endGame() {
-  gameOver=true;
+  gameOver = true;
   clearInterval(timerId);
+
+  sfxEnd.currentTime = 0;
+  sfxEnd.play();
+
   const name = prompt("닉네임 입력") || "PLAYER";
   await saveOnline(name.slice(0,10), score);
   showMain();
@@ -337,3 +361,4 @@ showMain();
 </script>
 </body>
 </html>
+
