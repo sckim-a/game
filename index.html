@@ -317,11 +317,13 @@ setTimeout(()=>{
   render();
 
   // ⏱ 터짐 연출 후 종료
-  if (!infiniteMode && !canMakeTen()) {
-    setTimeout(() => {
-      endGame();
-    }, 200); // 마지막 여운
+  if (!canMakeTen()) {
+  if (infiniteMode) {
+    alert("⚠️ 더 이상 10을 만들 수 없습니다!");
+  } else {
+    setTimeout(() => endGame(), 200);
   }
+}
 
 },300);
 
