@@ -303,12 +303,22 @@ boardEl.onpointerup = () => {
     sfxPop.currentTime=0;
     sfxPop.play();
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
-    setTimeout(()=>{
-      pos.forEach(([r,c])=>board[r][c]=0);
-      score+=pos.length;
-      scoreEl.textContent=`점수: ${score}`;
-      render();
-    },300);
+
+setTimeout(()=>{
+  pos.forEach(([r,c])=>board[r][c]=0);
+  score+=pos.length;
+  scoreEl.textContent = `점수: ${score}`;
+  render();
+
+  // ⏱ 터짐 연출 후 종료
+  if (!infiniteMode && !canMakeTen()) {
+    setTimeout(() => {
+      endGame();
+    }, 200); // 마지막 여운
+  }
+
+},300);
+
   }
 };
 
