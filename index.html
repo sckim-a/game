@@ -14,7 +14,7 @@ body {
 
 .hidden { display: none; }
 
-/* ===== 정보 ===== */
+/* 정보 */
 #info {
   display: flex;
   justify-content: center;
@@ -23,7 +23,7 @@ body {
   font-weight: bold;
 }
 
-/* ===== 보드 ===== */
+/* 보드 */
 #board {
   width: 80vw;
   max-width: 360px;
@@ -35,10 +35,9 @@ body {
   user-select: none;
 }
 
-/* ===== 🍎 사과 (나뭇잎 제거, 밝은 색) ===== */
+/* 사과 */
 .cell {
   aspect-ratio: 1 / 1;
-  position: relative;
   background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff6b6b);
   border-radius: 50%;
   display: flex;
@@ -46,16 +45,13 @@ body {
   justify-content: center;
   font-weight: 900;
   font-size: 18px;
-  color: #ffffff;
+  color: #fff;
   text-shadow: 0 0 3px rgba(0,0,0,0.9);
-  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.15),
-              0 2px 4px rgba(0,0,0,0.25);
 }
 
 .cell.empty {
   background: #e0e0e0;
   border-radius: 6px;
-  box-shadow: none;
   color: transparent;
 }
 
@@ -63,7 +59,7 @@ body {
   outline: 3px solid #ffd43b;
 }
 
-/* ===== 터짐 ===== */
+/* 터짐 */
 @keyframes pop {
   0% { transform: scale(1); opacity: 1; }
   60% { transform: scale(1.35); }
@@ -71,19 +67,17 @@ body {
 }
 .pop { animation: pop 0.3s ease-out forwards; }
 
-/* ===== 랭킹 ===== */
+/* 랭킹 */
 #ranking {
   max-width: 320px;
   margin: 10px auto 20px;
   padding: 0;
-  text-align: left;
 }
 #ranking li {
   list-style: none;
   margin: 4px 0;
   padding: 6px;
   border-radius: 6px;
-  font-size: 14px;
 }
 .rank1 { background: gold; font-weight: bold; }
 .rank2 { background: silver; font-weight: bold; }
@@ -98,7 +92,7 @@ button {
 </head>
 
 <body>
-
+
 <h2 id="icon" style="cursor:pointer">🍎 사과게임</h2>
 
 <div id="mainScreen">
@@ -124,15 +118,14 @@ import {
 
 /* Firebase */
 const firebaseConfig = {
-    apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
-    authDomain: "applegame-32c01.firebaseapp.com",
-    projectId: "applegame-32c01",
-    storageBucket: "applegame-32c01.firebasestorage.app",
-    messagingSenderId: "471752911086",
-    appId: "1:471752911086:web:6ea47c3952412fe650ebff",
-    measurementId: "G-4GETLD0JGB"
- };
-  
+  apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
+  authDomain: "applegame-32c01.firebaseapp.com",
+  projectId: "applegame-32c01",
+  storageBucket: "applegame-32c01.firebasestorage.app",
+  messagingSenderId: "471752911086",
+  appId: "1:471752911086:web:6ea47c3952412fe650ebff"
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -141,44 +134,23 @@ const ROWS = 12;
 const COLS = 10;
 const GAME_TIME = 120;
 
-/* 효과음 */
-const sfxSelect = new Audio("select.wav");
-const sfxPop = new Audio("pop.wav");
-const sfxEnd = new Audio("end.wav");
-
-sfxSelect.volume = 0.4;
-sfxPop.volume = 0.6;
-sfxEnd.volume = 0.7;
-
 /* 상태 */
 let board = [];
 let cells = [];
-let selecting = false;
 let visited = [];
+let selecting = false;
 let score = 0;
 let timeLeft = GAME_TIME;
 let timerId = null;
 let gameOver = true;
-let infiniteMode = false; // 무제한 모드 여부
+let infiniteMode = false;
 
 /* DOM */
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-const rankingEl = document.getElementById("ranking");
-const rankingTitleEl = document.getElementById("rankingTitle");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
-
-/* 월 */
-function getCurrentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-}
-function updateRankingTitle(m) {
-  const [y, mo] = m.split("-");
-  rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
-}
 
 /* 화면 */
 function showMain() {
@@ -213,216 +185,100 @@ function render() {
   });
 }
 
+/* 10 가능 여부 */
 function canMakeTen() {
-  for (let r1 = 0; r1 < ROWS; r1++) {
-    for (let c1 = 0; c1 < COLS; c1++) {
-      for (let r2 = r1; r2 < ROWS; r2++) {
-        for (let c2 = c1; c2 < COLS; c2++) {
-
-          let sum = 0;
-          let count = 0;
-
-          for (let r = r1; r <= r2; r++) {
-            for (let c = c1; c <= c2; c++) {
-              if (board[r][c] > 0) {
-                sum += board[r][c];
-                count++;
-                if (sum > 10) break;
+  for (let r1=0;r1<ROWS;r1++)
+    for (let c1=0;c1<COLS;c1++)
+      for (let r2=r1;r2<ROWS;r2++)
+        for (let c2=c1;c2<COLS;c2++) {
+          let sum=0,count=0;
+          for (let r=r1;r<=r2;r++)
+            for (let c=c1;c<=c2;c++)
+              if (board[r][c]>0) {
+                sum+=board[r][c]; count++;
               }
-            }
-            if (sum > 10) break;
-          }
-
-          if (sum === 10 && count >= 2) {
-            return true; // 만들 수 있음
-          }
+          if (sum===10 && count>=2) return true;
         }
-      }
-    }
-  }
-  return false; // 절대 못 만듦
+  return false;
 }
 
 /* 타이머 */
 function startTimer() {
   clearInterval(timerId);
-
-  // ⏱ 무제한 모드면 타이머 시작 안 함
   if (infiniteMode) {
     timerEl.textContent = "∞";
     return;
   }
-
   timerId = setInterval(() => {
     timeLeft--;
-    updateTimer();
-    if (timeLeft <= 0) endGame();
-  }, 1000);
-}
-
-function updateTimer() {
-  timerEl.textContent =
-    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
-}
-
-/* 랭킹 */
-async function saveOnline(name, score) {
-  await addDoc(collection(db,"ranking"), {
-    name, score,
-    month: getCurrentMonth(),
-    date: new Date()
-  });
-}
-async function loadRanking() {
-  const m = getCurrentMonth();
-  updateRankingTitle(m);
-  const q = query(
-    collection(db,"ranking"),
-    where("month","==",m),
-    orderBy("score","desc"),
-    limit(30)
-  );
-  const snap = await getDocs(q);
-  rankingEl.innerHTML="";
-  let rank=1;
-  snap.forEach(doc=>{
-    const d=doc.data();
-    const li=document.createElement("li");
-    li.className = rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"rankN";
-    li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
-    rankingEl.appendChild(li);
-    rank++;
-  });
-}
-
-/* 셀 찾기 */
-function getCell(e) {
-  const p = e.touches ? e.touches[0] : e;
-  const el = document.elementFromPoint(p.clientX, p.clientY);
-  if (!el || !el.classList.contains("cell")) return null;
-  return el;
+    timerEl.textContent =
+      `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+    if (timeLeft<=0) endGame();
+  },1000);
 }
 
 /* 드래그 */
 boardEl.onpointerdown = e => {
   if (gameOver) return;
-  boardEl.setPointerCapture(e.pointerId);
-  visited = [];
-  selecting = true;
+  visited=[]; selecting=true;
 };
-
 boardEl.onpointermove = e => {
   if (!selecting) return;
-  const c = getCell(e);
-  if (!c) return;
-
-  const r = +c.dataset.r;
-  const col = +c.dataset.c;
-
-  // 중복 방지
-  if (visited.some(v => v[0] === r && v[1] === col)) return;
-
-  visited.push([r, col]);
-
-  //sfxSelect.currentTime = 0;
-  //sfxSelect.play();
-
-  const rows = visited.map(v=>v[0]);
-  const cols = visited.map(v=>v[1]);
-  const minR=Math.min(...rows), maxR=Math.max(...rows);
-  const minC=Math.min(...cols), maxC=Math.max(...cols);
-
-  cells.forEach(x=>{
-    const rr=+x.dataset.r, cc=+x.dataset.c;
-    x.classList.toggle("selected",
-      rr>=minR && rr<=maxR && cc>=minC && cc<=maxC
-    );
-  });
+  const el = document.elementFromPoint(e.clientX,e.clientY);
+  if (!el || !el.classList.contains("cell")) return;
+  const r=+el.dataset.r,c=+el.dataset.c;
+  if (visited.some(v=>v[0]===r&&v[1]===c)) return;
+  visited.push([r,c]);
 };
-
 boardEl.onpointerup = () => {
-  if (!selecting) return;
   selecting=false;
+  if (!visited.length) return;
+  const rs=visited.map(v=>v[0]), cs=visited.map(v=>v[1]);
+  const minR=Math.min(...rs), maxR=Math.max(...rs);
+  const minC=Math.min(...cs), maxC=Math.max(...cs);
 
-  const rows = visited.map(v=>v[0]);
-  const cols = visited.map(v=>v[1]);
-  if (!rows.length) return;
+  let sum=0,pos=[];
+  for (let r=minR;r<=maxR;r++)
+    for (let c=minC;c<=maxC;c++)
+      if (board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
 
-  const minR=Math.min(...rows), maxR=Math.max(...rows);
-  const minC=Math.min(...cols), maxC=Math.max(...cols);
+  if (sum===10 && pos.length>=2){
+    pos.forEach(([r,c])=>board[r][c]=0);
+    score+=pos.length;
+    scoreEl.textContent=`점수: ${score}`;
+    render();
 
-  let sum=0, pos=[];
-  for(let r=minR;r<=maxR;r++)
-    for(let c=minC;c<=maxC;c++)
-      if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
-
-  if(sum===10 && pos.length>=2){
-    sfxPop.currentTime = 0;
-    sfxPop.play();
-  
-    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
-    setTimeout(()=>{
-      pos.forEach(([r,c])=>board[r][c]=0);
-      score+=pos.length;
-      scoreEl.textContent=`점수: ${score}`;
-      render();
-
-  // 🔥 더 이상 10을 만들 수 없으면 종료
-  if (!canMakeTen()) {
-    setTimeout(() => {
+    if (!infiniteMode && !canMakeTen()) {
       alert("❌ 더 이상 10을 만들 수 없습니다!");
       endGame();
-    }, 300);
+    }
   }
-
-}, 300);
+};
 
 /* 종료 */
-async function endGame() {
-  gameOver = true;
+function endGame() {
+  gameOver=true;
   clearInterval(timerId);
-
-  sfxEnd.currentTime = 0;
-  sfxEnd.play();
-
-  const name = prompt("닉네임 입력") || "PLAYER";
-  await saveOnline(name.slice(0,10), score);
   showMain();
 }
 
-/* 시작 */
+/* 시작 버튼 (제한) */
 document.getElementById("startBtn").onclick = () => {
-  infiniteMode = false; // ⏱ 제한 모드
-  score = 0;
-  timeLeft = GAME_TIME;
-  gameOver = false;
+  infiniteMode=false;
+  score=0; timeLeft=GAME_TIME; gameOver=false;
+  scoreEl.textContent="점수: 0";
+  initBoard(); render(); showGame(); startTimer();
+};
 
-  scoreEl.textContent = "점수: 0";
-  updateTimer();
-
-  initBoard();
-  render();
-  showGame();
-  startTimer();
-};
-
+/* 아이콘 (무제한) */
 document.getElementById("icon").onclick = () => {
-  infiniteMode = true;
-  score = 0;
-  gameOver = false;
-
-  scoreEl.textContent = "점수: 0";
-  timerEl.textContent = "∞";
-
-  initBoard();
-  render();
-  showGame();
-  startTimer();
+  infiniteMode=true;
+  score=0; gameOver=false;
+  scoreEl.textContent="점수: 0";
+  initBoard(); render(); showGame(); startTimer();
 };
 
 showMain();
 </script>
 </body>
 </html>
-
-
