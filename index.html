@@ -98,8 +98,8 @@ button {
 </head>
 
 <body>
-
-<h2>🍎 사과게임</h2>
+
+<h2 id="icon" style="cursor:pointer">🍎 사과게임</h2>
 
 <div id="mainScreen">
   <button id="startBtn">▶ 게임 시작</button>
@@ -159,6 +159,7 @@ let score = 0;
 let timeLeft = GAME_TIME;
 let timerId = null;
 let gameOver = true;
+let infiniteMode = false; // 무제한 모드 여부
 
 /* DOM */
 const boardEl = document.getElementById("board");
@@ -212,15 +213,53 @@ function render() {
   });
 }
 
+function canMakeTen() {
+  for (let r1 = 0; r1 < ROWS; r1++) {
+    for (let c1 = 0; c1 < COLS; c1++) {
+      for (let r2 = r1; r2 < ROWS; r2++) {
+        for (let c2 = c1; c2 < COLS; c2++) {
+
+          let sum = 0;
+          let count = 0;
+
+          for (let r = r1; r <= r2; r++) {
+            for (let c = c1; c <= c2; c++) {
+              if (board[r][c] > 0) {
+                sum += board[r][c];
+                count++;
+                if (sum > 10) break;
+              }
+            }
+            if (sum > 10) break;
+          }
+
+          if (sum === 10 && count >= 2) {
+            return true; // 만들 수 있음
+          }
+        }
+      }
+    }
+  }
+  return false; // 절대 못 만듦
+}
+
 /* 타이머 */
 function startTimer() {
   clearInterval(timerId);
+
+  // ⏱ 무제한 모드면 타이머 시작 안 함
+  if (infiniteMode) {
+    timerEl.textContent = "∞";
+    return;
+  }
+
   timerId = setInterval(() => {
     timeLeft--;
     updateTimer();
     if (timeLeft <= 0) endGame();
   }, 1000);
 }
+
 function updateTimer() {
   timerEl.textContent =
     `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
@@ -327,9 +366,16 @@ boardEl.onpointerup = () => {
       score+=pos.length;
       scoreEl.textContent=`점수: ${score}`;
       render();
-    },300);
+
+  // 🔥 더 이상 10을 만들 수 없으면 종료
+  if (!canMakeTen()) {
+    setTimeout(() => {
+      alert("❌ 더 이상 10을 만들 수 없습니다!");
+      endGame();
+    }, 300);
   }
-};
+
+}, 300);
 
 /* 종료 */
 async function endGame() {
@@ -346,11 +392,28 @@ async function endGame() {
 
 /* 시작 */
 document.getElementById("startBtn").onclick = () => {
-  score=0;
-  timeLeft=GAME_TIME;
-  gameOver=false;
-  scoreEl.textContent="점수: 0";
+  infiniteMode = false; // ⏱ 제한 모드
+  score = 0;
+  timeLeft = GAME_TIME;
+  gameOver = false;
+
+  scoreEl.textContent = "점수: 0";
   updateTimer();
+
+  initBoard();
+  render();
+  showGame();
+  startTimer();
+};
+
+document.getElementById("icon").onclick = () => {
+  infiniteMode = true;
+  score = 0;
+  gameOver = false;
+
+  scoreEl.textContent = "점수: 0";
+  timerEl.textContent = "∞";
+
   initBoard();
   render();
   showGame();
