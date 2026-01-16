@@ -252,7 +252,7 @@ async function loadRanking(){
     const d=doc.data();
     const li=document.createElement("li");
     li.className=rank===1?"rank1":rank===2?"rank2":rank===3?"rank3":"rankN";
-    li.textContent=`${rank}위 · ${d.name} · ${d.score}점 (${d.mode})`;
+    li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
     rankingEl.appendChild(li);
     rank++;
   });
