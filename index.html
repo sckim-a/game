@@ -285,8 +285,8 @@ boardEl.onpointermove = e => {
 
   visited.push([r, col]);
 
-  sfxSelect.currentTime = 0;
-  sfxSelect.play();
+  //sfxSelect.currentTime = 0;
+  //sfxSelect.play();
 
   const rows = visited.map(v=>v[0]);
   const cols = visited.map(v=>v[1]);
@@ -361,4 +361,5 @@ showMain();
 </script>
 </body>
 </html>
+
 
