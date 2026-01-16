@@ -120,6 +120,12 @@ button {
   <div id="board"></div>
 </div>
 
+<div id="info">
+  <div id="score">점수: 0</div>
+  <div id="timer"></div>
+  <button id="quitBtn" class="hidden">종료</button>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
@@ -337,13 +343,23 @@ async function endGame(){
   showMain();
 }
 
+quitBtn.onclick = () => {
+  if (!infiniteMode) return;
+  endGame(); // 🔥 여기서 기록 등록됨
+};
+
 /* 시작 */
+const quitBtn = document.getElementById("quitBtn");
+
 function startGame(inf){
-  infiniteMode=inf;
-  gameOver=false;
-  score=0;
-  timeLeft=GAME_TIME;
-  scoreEl.textContent="점수: 0";
+  infiniteMode = inf;
+  gameOver = false;
+  score = 0;
+  timeLeft = GAME_TIME;
+  scoreEl.textContent = "점수: 0";
+
+  quitBtn.classList.toggle("hidden", !infiniteMode);
+
   initBoard();
   render();
   showGame();
