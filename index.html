@@ -269,23 +269,41 @@ async function loadRanking(){
 }
 
 /* ⭐ 10 조합 개수 계산 */
-function countMakeTen(){
-  let count=0;
-  for(let r1=0;r1<ROWS;r1++){
-    for(let c1=0;c1<COLS;c1++){
-      for(let r2=r1;r2<ROWS;r2++){
-        for(let c2=c1;c2<COLS;c2++){
-          let sum=0;
-          for(let r=r1;r<=r2;r++){
-            for(let c=c1;c<=c2;c++){
-              sum+=board[r][c];
+function countMakeTen() {
+  let count = 0;
+
+  for (let r1 = 0; r1 < ROWS; r1++) {
+    for (let c1 = 0; c1 < COLS; c1++) {
+      for (let r2 = r1; r2 < ROWS; r2++) {
+        for (let c2 = c1; c2 < COLS; c2++) {
+
+          let sum = 0;
+          let cellCount = 0;
+          let valid = true;
+
+          for (let r = r1; r <= r2; r++) {
+            for (let c = c1; c <= c2; c++) {
+              if (board[r][c] === 0) {
+                valid = false;   // 빈칸 포함 → 불가
+                break;
+              }
+              sum += board[r][c];
+              cellCount++;
             }
+            if (!valid) break;
           }
-          if(sum===10) count++;
+
+          if (!valid) continue;
+          if (cellCount < 2) continue;
+
+          if (sum === 10) {
+            count++;
+          }
         }
       }
     }
   }
+
   return count;
 }
 
