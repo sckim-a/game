@@ -11,8 +11,7 @@ body {
   font-family: Arial, sans-serif;
   text-align: center;
 }
-
-.hidden { display: none; }
+.hidden { display:none; }
 
 /* 정보 */
 #info {
@@ -37,7 +36,7 @@ body {
 
 /* 사과 */
 .cell {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1/1;
   background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff4d4d);
   border-radius: 50%;
   display: flex;
@@ -47,15 +46,11 @@ body {
   font-size: 18px;
   color: #fff;
   text-shadow: 0 0 3px rgba(0,0,0,0.8);
-  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.2),
-              0 2px 4px rgba(0,0,0,0.25);
 }
-
 .cell.empty {
   background: #ddd;
-  border-radius: 6px;
   color: transparent;
-  box-shadow: none;
+  border-radius: 6px;
 }
 
 /* 선택 영역 */
@@ -83,13 +78,11 @@ body {
   border-radius: 10px;
   font-weight: bold;
   opacity: 0;
-  pointer-events: none;
   transition: opacity 0.3s;
+  pointer-events: none;
   z-index: 100;
 }
-#toast.show {
-  opacity: 1;
-}
+#toast.show { opacity: 1; }
 
 /* 랭킹 */
 #ranking {
@@ -130,6 +123,7 @@ button {
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
+    <div id="possible">가능 조합: 0개</div>
     <div id="timer">02:00</div>
   </div>
   <div id="board"></div>
@@ -177,6 +171,7 @@ let gameOver = true;
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
+const possibleEl = document.getElementById("possible");
 const toastEl = document.getElementById("toast");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
@@ -184,148 +179,157 @@ const rankingEl = document.getElementById("ranking");
 const rankingTitleEl = document.getElementById("rankingTitle");
 
 /* 토스트 */
-function showToast(msg, duration = 1000) {
+function showToast(msg, duration=1000){
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), duration);
+  setTimeout(()=>toastEl.classList.remove("show"), duration);
 }
 
 /* 월 */
-function getCurrentMonth() {
-  const d = new Date();
+function getCurrentMonth(){
+  const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
-function updateRankingTitle(m) {
-  const [y, mo] = m.split("-");
-  rankingTitleEl.textContent = `📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
+function updateRankingTitle(m){
+  const [y,mo]=m.split("-");
+  rankingTitleEl.textContent=`📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
 }
 
 /* 화면 */
-function showMain() {
+function showMain(){
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
   loadRanking();
 }
-function showGame() {
+function showGame(){
   mainScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 }
 
 /* 보드 */
-function initBoard() {
-  board = Array.from({ length: ROWS }, () =>
-    Array.from({ length: COLS }, () => Math.floor(Math.random() * 9) + 1)
+function initBoard(){
+  board = Array.from({length:ROWS},()=> 
+    Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1)
   );
 }
-function render() {
-  boardEl.innerHTML = "";
-  cells = [];
+function render(){
+  boardEl.innerHTML="";
+  cells=[];
   board.forEach((row,r)=>{
     row.forEach((v,c)=>{
-      const d = document.createElement("div");
-      d.className = "cell" + (v===0?" empty":"");
-      d.textContent = v || "";
+      const d=document.createElement("div");
+      d.className="cell"+(v===0?" empty":"");
+      d.textContent=v||"";
       d.dataset.r=r;
       d.dataset.c=c;
       boardEl.appendChild(d);
       cells.push(d);
     });
   });
+  updatePossible();
 }
 
 /* 타이머 */
-function startTimer() {
+function startTimer(){
   clearInterval(timerId);
-  timerId = setInterval(()=>{
+  timerId=setInterval(()=>{
     timeLeft--;
     timerEl.textContent =
       `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
-    if (timeLeft<=0) endGame();
+    if(timeLeft<=0) endGame();
   },1000);
 }
 
 /* 랭킹 */
-async function saveOnline(name, score) {
-  await addDoc(collection(db,"ranking"), {
-    name, score,
-    month: getCurrentMonth(),
-    date: new Date()
+async function saveOnline(name,score){
+  await addDoc(collection(db,"ranking"),{
+    name,score,month:getCurrentMonth(),date:new Date()
   });
 }
-async function loadRanking() {
-  const m = getCurrentMonth();
+async function loadRanking(){
+  const m=getCurrentMonth();
   updateRankingTitle(m);
-  const q = query(
+  const q=query(
     collection(db,"ranking"),
     where("month","==",m),
     orderBy("score","desc"),
     limit(30)
   );
-  const snap = await getDocs(q);
+  const snap=await getDocs(q);
   rankingEl.innerHTML="";
   let rank=1;
   snap.forEach(doc=>{
     const d=doc.data();
     const li=document.createElement("li");
-    li.className = rank<=3?`rank${rank}`:"rankN";
+    li.className=rank<=3?`rank${rank}`:"rankN";
     li.textContent=`${rank}위 · ${d.name} · ${d.score}점`;
     rankingEl.appendChild(li);
     rank++;
   });
 }
 
-/* 10 체크 */
-function canMakeTen() {
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      let sum=0;
-      for(let rr=r;rr<ROWS;rr++){
-        for(let cc=c;cc<COLS;cc++){
-          sum+=board[rr][cc];
-          if(sum===10) return true;
-          if(sum>10) break;
+/* ⭐ 10 조합 개수 계산 */
+function countMakeTen(){
+  let count=0;
+  for(let r1=0;r1<ROWS;r1++){
+    for(let c1=0;c1<COLS;c1++){
+      for(let r2=r1;r2<ROWS;r2++){
+        for(let c2=c1;c2<COLS;c2++){
+          let sum=0;
+          for(let r=r1;r<=r2;r++){
+            for(let c=c1;c<=c2;c++){
+              sum+=board[r][c];
+            }
+          }
+          if(sum===10) count++;
         }
       }
     }
   }
-  return false;
+  return count;
+}
+
+function updatePossible(){
+  const cnt = countMakeTen();
+  possibleEl.textContent = `가능 조합: ${cnt}개`;
+  return cnt;
 }
 
 /* 선택 */
-boardEl.onpointerdown = () => {
-  if (gameOver) return;
+boardEl.onpointerdown=()=>{
+  if(gameOver) return;
   visited=[];
   selecting=true;
 };
-boardEl.onpointermove = e => {
-  if (!selecting) return;
-  const el = document.elementFromPoint(e.clientX,e.clientY);
-  if (!el || !el.classList.contains("cell")) return;
-  const r=+el.dataset.r, c=+el.dataset.c;
-  if (visited.some(v=>v[0]===r&&v[1]===c)) return;
+boardEl.onpointermove=e=>{
+  if(!selecting) return;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el||!el.classList.contains("cell")) return;
+  const r=+el.dataset.r,c=+el.dataset.c;
+  if(visited.some(v=>v[0]===r&&v[1]===c)) return;
   visited.push([r,c]);
 
   const rs=visited.map(v=>v[0]);
   const cs=visited.map(v=>v[1]);
-  const minR=Math.min(...rs), maxR=Math.max(...rs);
-  const minC=Math.min(...cs), maxC=Math.max(...cs);
+  const minR=Math.min(...rs),maxR=Math.max(...rs);
+  const minC=Math.min(...cs),maxC=Math.max(...cs);
 
   cells.forEach(x=>{
-    const rr=+x.dataset.r, cc=+x.dataset.c;
+    const rr=+x.dataset.r,cc=+x.dataset.c;
     x.classList.toggle("selected",
       rr>=minR&&rr<=maxR&&cc>=minC&&cc<=maxC);
   });
 };
-boardEl.onpointerup = () => {
+boardEl.onpointerup=()=>{
   selecting=false;
-  if (!visited.length) return;
+  if(!visited.length) return;
 
   const rs=visited.map(v=>v[0]);
   const cs=visited.map(v=>v[1]);
-  const minR=Math.min(...rs), maxR=Math.max(...rs);
-  const minC=Math.min(...cs), maxC=Math.max(...cs);
+  const minR=Math.min(...rs),maxR=Math.max(...rs);
+  const minC=Math.min(...cs),maxC=Math.max(...cs);
 
-  let sum=0, pos=[];
+  let sum=0,pos=[];
   for(let r=minR;r<=maxR;r++)
     for(let c=minC;c<=maxC;c++)
       if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
@@ -339,27 +343,27 @@ boardEl.onpointerup = () => {
       scoreEl.textContent=`점수: ${score}`;
       render();
 
-      if (!canMakeTen()) {
-        showToast("⚠️ 더 이상 10을 만들 수 없습니다!", 1000);
-        setTimeout(endGame, 1000);
+      if(updatePossible()===0){
+        showToast("⚠️ 더 이상 10을 만들 수 없습니다!",1000);
+        setTimeout(endGame,1000);
       }
     },300);
   }
 };
 
 /* 종료 */
-async function endGame() {
-  if (gameOver) return;
+async function endGame(){
+  if(gameOver) return;
   gameOver=true;
   clearInterval(timerId);
   sfxEnd.play();
-  const name = prompt("닉네임 입력") || "PLAYER";
-  await saveOnline(name.slice(0,10), score);
+  const name=prompt("닉네임 입력")||"PLAYER";
+  await saveOnline(name.slice(0,10),score);
   showMain();
 }
 
 /* 시작 */
-document.getElementById("startBtn").onclick = () => {
+document.getElementById("startBtn").onclick=()=>{
   score=0;
   timeLeft=GAME_TIME;
   gameOver=false;
@@ -369,7 +373,7 @@ document.getElementById("startBtn").onclick = () => {
   showGame();
   startTimer();
 };
-document.getElementById("title").onclick = () => {
+document.getElementById("title").onclick=()=>{
   score=0;
   timeLeft=FIVE_TIME;
   gameOver=false;
