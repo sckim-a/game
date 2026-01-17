@@ -134,7 +134,8 @@ const db = getFirestore(app);
 /* 설정 */
 const ROWS = 12;
 const COLS = 10;
-const GAME_TIME = 120;
+const GAME_TIME = 120;      // 일반모드 (2분)
+const INFINITE_TIME = 300; // 무제한모드 → 5분
 
 /* 효과음 */
 const sfxPop = new Audio("pop.wav");
@@ -206,16 +207,13 @@ function render() {
 /* 타이머 */
 function startTimer() {
   clearInterval(timerId);
-  if (infiniteMode) {
-    timerEl.textContent = "∞";
-    return;
-  }
-  timerId = setInterval(()=>{
+  timerId = setInterval(() => {
     timeLeft--;
     timerEl.textContent =
-      `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
-    if (timeLeft<=0) endGame();
-  },1000);
+      `${String(Math.floor(timeLeft / 60)).padStart(2,"0")}:${String(timeLeft % 60).padStart(2,"0")}`;
+
+    if (timeLeft <= 0) endGame();
+  }, 1000);
 }
 
 /* 랭킹 */
@@ -335,10 +333,10 @@ async function endGame() {
 /* 시작 */
 document.getElementById("startBtn").onclick = () => {
   infiniteMode = false;
-  score=0;
-  timeLeft=GAME_TIME;
-  gameOver=false;
-  scoreEl.textContent="점수: 0";
+  score = 0;
+  timeLeft = GAME_TIME;   // 그대로
+  gameOver = false;
+  scoreEl.textContent = "점수: 0";
   initBoard();
   render();
   showGame();
@@ -348,9 +346,10 @@ document.getElementById("startBtn").onclick = () => {
 /* 아이콘 클릭 → 무제한 */
 document.getElementById("title").onclick = () => {
   infiniteMode = true;
-  score=0;
-  gameOver=false;
-  scoreEl.textContent="점수: 0";
+  score = 0;
+  timeLeft = INFINITE_TIME;   // 🔥 5분 설정
+  gameOver = false;
+  scoreEl.textContent = "점수: 0";
   initBoard();
   render();
   showGame();
