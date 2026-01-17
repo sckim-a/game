@@ -126,7 +126,7 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
   authDomain: "applegame-32c01.firebaseapp.com",
-  projectId: "applegame-32c01",
+  projectId: "applegame-32c01"
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -134,8 +134,8 @@ const db = getFirestore(app);
 /* 설정 */
 const ROWS = 12;
 const COLS = 10;
-const GAME_TIME = 120;      // 일반모드 (2분)
-const INFINITE_TIME = 300; // 무제한모드 → 5분
+const GAME_TIME = 120;     // 일반모드 2분
+const FIVE_TIME = 300;    // 5분 모드
 
 /* 효과음 */
 const sfxPop = new Audio("pop.wav");
@@ -150,7 +150,6 @@ let score = 0;
 let timeLeft = GAME_TIME;
 let timerId = null;
 let gameOver = true;
-let infiniteMode = false;
 
 /* DOM */
 const boardEl = document.getElementById("board");
@@ -207,13 +206,12 @@ function render() {
 /* 타이머 */
 function startTimer() {
   clearInterval(timerId);
-  timerId = setInterval(() => {
+  timerId = setInterval(()=>{
     timeLeft--;
     timerEl.textContent =
-      `${String(Math.floor(timeLeft / 60)).padStart(2,"0")}:${String(timeLeft % 60).padStart(2,"0")}`;
-
-    if (timeLeft <= 0) endGame();
-  }, 1000);
+      `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+    if (timeLeft<=0) endGame();
+  },1000);
 }
 
 /* 랭킹 */
@@ -264,7 +262,7 @@ function canMakeTen() {
 }
 
 /* 선택 */
-boardEl.onpointerdown = e => {
+boardEl.onpointerdown = () => {
   if (gameOver) return;
   visited=[];
   selecting=true;
@@ -276,10 +274,12 @@ boardEl.onpointermove = e => {
   const r=+el.dataset.r, c=+el.dataset.c;
   if (visited.some(v=>v[0]===r&&v[1]===c)) return;
   visited.push([r,c]);
+
   const rs=visited.map(v=>v[0]);
   const cs=visited.map(v=>v[1]);
   const minR=Math.min(...rs), maxR=Math.max(...rs);
   const minC=Math.min(...cs), maxC=Math.max(...cs);
+
   cells.forEach(x=>{
     const rr=+x.dataset.r, cc=+x.dataset.c;
     x.classList.toggle("selected",
@@ -310,11 +310,8 @@ boardEl.onpointerup = () => {
       render();
 
       if (!canMakeTen()) {
-        
-          alert("⚠️ 더 이상 10을 만들 수 없습니다!");
-        
-          endGame();
-        
+        alert("⚠️ 더 이상 10을 만들 수 없습니다!");
+        endGame();
       }
     },300);
   }
@@ -330,26 +327,24 @@ async function endGame() {
   showMain();
 }
 
-/* 시작 */
+/* 일반모드 시작 */
 document.getElementById("startBtn").onclick = () => {
-  infiniteMode = false;
-  score = 0;
-  timeLeft = GAME_TIME;   // 그대로
-  gameOver = false;
-  scoreEl.textContent = "점수: 0";
+  score=0;
+  timeLeft=GAME_TIME;
+  gameOver=false;
+  scoreEl.textContent="점수: 0";
   initBoard();
   render();
   showGame();
   startTimer();
 };
 
-/* 아이콘 클릭 → 무제한 */
+/* 5분 모드 시작 */
 document.getElementById("title").onclick = () => {
-  infiniteMode = true;
-  score = 0;
-  timeLeft = INFINITE_TIME;   // 🔥 5분 설정
-  gameOver = false;
-  scoreEl.textContent = "점수: 0";
+  score=0;
+  timeLeft=FIVE_TIME;
+  gameOver=false;
+  scoreEl.textContent="점수: 0";
   initBoard();
   render();
   showGame();
