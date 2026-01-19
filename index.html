@@ -60,9 +60,11 @@ button{padding:6px 12px;font-size:14px;margin:4px;}
     <button id="saveNickBtn">저장</button>
   </div>
 
-  <button id="startBtn">▶ 시작</button>
-  <button id="battleBtn">⚔️ 친구대전</button>
-
+  <div id="buttonGroup" style="display:flex; flex-direction:column; gap:10px; margin:10px 0;">
+    <button id="startBtn">▶ 시작</button>
+    <button id="battleBtn">⚔️ 친구대전</button>
+  </div>
+  
   <div id="battleList" style="max-width:300px;margin:auto;text-align:left;">
     <h4>📝 오픈된 방 목록</h4>
     <ul id="rooms"></ul>
