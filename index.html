@@ -338,6 +338,7 @@ async function endGame(){
 /* 시작 */
 document.getElementById("startBtn").onclick=()=>{
   if(!requireNick()) return;
+  document.getElementById("resultModal").classList.add("hidden");
   score=0;timeLeft=GAME_TIME;gameOver=false;
   initBoard();render();showGame();startTimer();
 };
