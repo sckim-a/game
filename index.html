@@ -6,7 +6,7 @@
 <title>사과게임</title>
 
 <style>
-body { margin:0; font-family:Arial,sans-serif; text-align:center; }
+body{margin:0;font-family:Arial,sans-serif;text-align:center;}
 .hidden{display:none;}
 #title{cursor:pointer;user-select:none;}
 
@@ -42,7 +42,11 @@ body { margin:0; font-family:Arial,sans-serif; text-align:center; }
 .rank3{background:#cd7f32;font-weight:bold;}
 .rankN{background:#fff3cd;}
 
-button{padding:10px 20px;font-size:16px;margin:4px;}
+#nicknameInput{width:120px;padding:6px;font-size:14px;}
+#saveNickBtn{padding:6px 12px;font-size:14px;margin-left:4px;}
+button{padding:6px 12px;font-size:14px;margin:4px;}
+#rooms li{cursor:pointer;margin:2px 0;padding:4px;border:1px solid #ccc;border-radius:4px;}
+#rooms li:hover{background:#eee;}
 </style>
 </head>
 
@@ -51,14 +55,18 @@ button{padding:10px 20px;font-size:16px;margin:4px;}
 <h2 id="title">🍎 사과게임</h2>
 
 <div id="mainScreen">
-  <div>
-    닉네임 :
-    <input id="nicknameInput" maxlength="10" placeholder="닉네임 입력">
+  <div style="margin:8px 0;">
+    닉네임 : <input id="nicknameInput" maxlength="10" placeholder="닉네임 입력">
     <button id="saveNickBtn">저장</button>
   </div>
 
   <button id="startBtn">▶ 시작</button>
   <button id="battleBtn">⚔️ 친구대전</button>
+
+  <div id="battleList" style="max-width:300px;margin:auto;text-align:left;">
+    <h4>📝 오픈된 방 목록</h4>
+    <ul id="rooms"></ul>
+  </div>
 
   <h3 id="rankingTitle"></h3>
   <ol id="ranking"></ol>
@@ -79,7 +87,7 @@ button{padding:10px 20px;font-size:16px;margin:4px;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore, collection, addDoc, getDoc, setDoc, updateDoc,
-  query, where, orderBy, limit, getDocs, doc
+  query, where, orderBy, limit, doc, getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* Firebase */
@@ -111,6 +119,8 @@ const gameScreen=document.getElementById("gameScreen");
 const rankingEl=document.getElementById("ranking");
 const rankingTitleEl=document.getElementById("rankingTitle");
 const nickInput=document.getElementById("nicknameInput");
+const roomsEl=document.getElementById("rooms");
+const title=document.getElementById("title");
 
 /* 닉네임 */
 function loadNick(){
@@ -123,20 +133,26 @@ function saveNick(){
   localStorage.setItem("apple_nick",n);
   showToast("닉네임 저장");
 }
-function getNick(){
-  return localStorage.getItem("apple_nick")||"PLAYER";
+function getNick(){return localStorage.getItem("apple_nick")||"";}
+function requireNick(){
+  if(!getNick().trim()){
+    alert("닉네임을 먼저 입력해주세요!");
+    nickInput.focus();
+    return false;
+  }
+  return true;
 }
 document.getElementById("saveNickBtn").onclick=saveNick;
 loadNick();
 
 /* 토스트 */
-function showToast(m,d=1000){
-  toastEl.textContent=m;
+function showToast(msg,d=1000){
+  toastEl.textContent=msg;
   toastEl.classList.add("show");
   setTimeout(()=>toastEl.classList.remove("show"),d);
 }
 
-/* 주차 */
+/* 주간 계산 */
 function getWeek(){
   const d=new Date(),u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
   const day=u.getUTCDay()||7;
@@ -169,7 +185,7 @@ function render(){
   updatePossible();
 }
 
-/* 10 조합 */
+/* 10 조합 개선 */
 function countMakeTen(){
   let cnt=0;
   const s=Array.from({length:ROWS+1},()=>Array(COLS+1).fill(0));
@@ -207,7 +223,7 @@ async function saveRank(score){
   await addDoc(collection(db,"ranking"),{name:getNick(),score,week:getWeek(),date:new Date()});
 }
 async function loadRanking(){
-  const w=getWeek(); rankingTitleEl.textContent=`📅 ${w} 랭킹`;
+  const w=getWeek(); rankingTitleEl.textContent=`📅 ${w} 주간 랭킹`;
   const q=query(collection(db,"ranking"),where("week","==",w),orderBy("score","desc"),limit(30));
   const s=await getDocs(q); rankingEl.innerHTML="";
   let i=1; s.forEach(d=>{
@@ -218,7 +234,7 @@ async function loadRanking(){
   });
 }
 
-/* 선택 로직 (기존과 동일) */
+/* 선택 */
 boardEl.onpointerdown=()=>{if(gameOver)return;visited=[];selecting=true;};
 boardEl.onpointermove=e=>{
   if(!selecting) return;
@@ -265,39 +281,54 @@ async function endGame(){
   showMain();
 }
 
-/* 시작 버튼 */
+/* 시작 */
 document.getElementById("startBtn").onclick=()=>{
-  if(!getNick()) return;
+  if(!requireNick()) return;
   score=0;timeLeft=GAME_TIME;gameOver=false;
   initBoard();render();showGame();startTimer();
 };
 
 /* 친구대전 */
-document.getElementById("battleBtn").onclick=async()=>{
-  const host=confirm("확인: 방 만들기 / 취소: 방 참가");
+async function loadRooms(){
+  const q=query(collection(db,"rooms"));
+  const snap=await getDocs(q);
+  roomsEl.innerHTML="";
+  snap.forEach(docSnap=>{
+    const d=docSnap.data();
+    if(d.players.host && d.players.guest) return;
+    const li=document.createElement("li");
+    li.textContent=d.title+" (host:"+d.players.host.name+")";
+    li.onclick=async ()=>{
+      if(!requireNick()) return;
+      if(!confirm("입장하시겠습니까?")) return;
+      battleRoomId=docSnap.id; battleRole="guest";
+      score=0;timeLeft=GAME_TIME;gameOver=false;
+      initBoard(d.seed);render();showGame();startTimer();
+      await updateDoc(doc(db,"rooms",battleRoomId),{"players.guest":{name:getNick(),score:null}});
+    };
+    roomsEl.appendChild(li);
+  });
+}
+
+document.getElementById("battleBtn").onclick=async ()=>{
+  if(!requireNick()) return;
+  const host=confirm("확인: 방 만들기 / 취소: 방 목록 보기");
   if(host){
+    const title=prompt("방 제목 입력")||"무제 방";
     const seed=Math.floor(Math.random()*1e9);
     const ref=doc(collection(db,"rooms"));
-    await setDoc(ref,{seed,players:{host:{name:getNick(),score:null},guest:null}});
-    alert("방 코드: "+ref.id);
+    await setDoc(ref,{title,seed,players:{host:{name:getNick(),score:null},guest:null}});
     battleRoomId=ref.id;battleRole="host";
     score=0;timeLeft=GAME_TIME;gameOver=false;
     initBoard(seed);render();showGame();startTimer();
-  }else{
-    const id=prompt("방 코드 입력");
-    const ref=doc(db,"rooms",id);
-    const snap=await getDoc(ref);
-    if(!snap.exists()) return alert("방 없음");
-    await updateDoc(ref,{ "players.guest":{name:getNick(),score:null}});
-    battleRoomId=id;battleRole="guest";
-    score=0;timeLeft=GAME_TIME;gameOver=false;
-    initBoard(snap.data().seed);render();showGame();startTimer();
-  }
+    showToast(`방 생성 완료: ${title}`);
+  } else loadRooms();
 };
 
-/* 타이틀 롱프레스 200초 */
+/* 타이틀 롱프레스 200초 모드 */
 let lp=null;
 title.onpointerdown=()=>lp=setTimeout(()=>{
+  if(!requireNick()) return;
   score=0;timeLeft=FIVE_TIME;gameOver=false;
   initBoard();render();showGame();startTimer();
   showToast("🍏 200초 히든 모드!");
