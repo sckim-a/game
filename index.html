@@ -13,7 +13,11 @@ body {
 }
 .hidden { display:none; }
 
-/* 정보 */
+#title {
+  cursor: pointer;
+  user-select: none;
+}
+
 #info {
   display: flex;
   justify-content: center;
@@ -22,7 +26,6 @@ body {
   font-weight: bold;
 }
 
-/* 보드 */
 #board {
   width: 80vw;
   max-width: 360px;
@@ -34,7 +37,6 @@ body {
   user-select: none;
 }
 
-/* 사과 */
 .cell {
   aspect-ratio: 1/1;
   background: radial-gradient(circle at 30% 30%, #ffe3e3, #ff4d4d);
@@ -53,12 +55,8 @@ body {
   border-radius: 6px;
 }
 
-/* 선택 영역 */
-.selected {
-  outline: 3px solid #ffd43b;
-}
+.selected { outline: 3px solid #ffd43b; }
 
-/* 터짐 */
 @keyframes pop {
   0% { transform: scale(1); opacity: 1; }
   60% { transform: scale(1.35); }
@@ -66,7 +64,6 @@ body {
 }
 .pop { animation: pop 0.3s ease-out forwards; }
 
-/* 토스트 */
 #toast {
   position: fixed;
   top: 50%;
@@ -84,7 +81,6 @@ body {
 }
 #toast.show { opacity: 1; }
 
-/* 랭킹 */
 #ranking {
   max-width: 320px;
   margin: 10px auto 20px;
@@ -151,11 +147,7 @@ const db = getFirestore(app);
 const ROWS = 12;
 const COLS = 10;
 const GAME_TIME = 120;
-const FIVE_TIME = 200;
-
-/* 효과음 */
-const sfxPop = new Audio("pop.wav");
-const sfxEnd = new Audio("end.wav");
+const FIVE_TIME = 200; // ⭐ 롱프레스 히든 모드
 
 /* 상태 */
 let board = [];
@@ -185,14 +177,20 @@ function showToast(msg, duration=1000){
   setTimeout(()=>toastEl.classList.remove("show"), duration);
 }
 
-/* 월 */
-function getCurrentMonth(){
-  const d=new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+/* ISO 주간 */
+function getCurrentWeek() {
+  const d = new Date();
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2,"0")}`;
 }
-function updateRankingTitle(m){
-  const [y,mo]=m.split("-");
-  rankingTitleEl.textContent=`📅 ${y}년 ${Number(mo)}월 랭킹 TOP 30`;
+
+function updateRankingTitle(w){
+  const [y, wk] = w.split("-W");
+  rankingTitleEl.textContent = `📅 ${y}년 ${wk}주차 랭킹 TOP 30`;
 }
 
 /* 화면 */
@@ -243,15 +241,17 @@ function startTimer(){
 /* 랭킹 */
 async function saveOnline(name,score){
   await addDoc(collection(db,"ranking"),{
-    name,score,month:getCurrentMonth(),date:new Date()
+    name, score,
+    week: getCurrentWeek(),
+    date: new Date()
   });
 }
 async function loadRanking(){
-  const m=getCurrentMonth();
-  updateRankingTitle(m);
+  const w=getCurrentWeek();
+  updateRankingTitle(w);
   const q=query(
     collection(db,"ranking"),
-    where("month","==",m),
+    where("week","==",w),
     orderBy("score","desc"),
     limit(30)
   );
@@ -268,49 +268,43 @@ async function loadRanking(){
   });
 }
 
-/* ⭐ 10 조합 개수 계산 */
+/* 10 조합 계산 (개선 버전) */
 function countMakeTen() {
   let count = 0;
+  const sumP = Array.from({length:ROWS+1},()=>Array(COLS+1).fill(0));
+  const zeroP = Array.from({length:ROWS+1},()=>Array(COLS+1).fill(0));
 
-  for (let r1 = 0; r1 < ROWS; r1++) {
-    for (let c1 = 0; c1 < COLS; c1++) {
-      for (let r2 = r1; r2 < ROWS; r2++) {
-        for (let c2 = c1; c2 < COLS; c2++) {
+  for(let r=1;r<=ROWS;r++){
+    for(let c=1;c<=COLS;c++){
+      const v = board[r-1][c-1];
+      sumP[r][c]=sumP[r-1][c]+sumP[r][c-1]-sumP[r-1][c-1]+v;
+      zeroP[r][c]=zeroP[r-1][c]+zeroP[r][c-1]-zeroP[r-1][c-1]+(v===0?1:0);
+    }
+  }
 
-          let sum = 0;
-          let cellCount = 0;
-          let valid = true;
+  for(let r1=0;r1<ROWS;r1++){
+    for(let c1=0;c1<COLS;c1++){
+      for(let r2=r1;r2<ROWS;r2++){
+        for(let c2=c1;c2<COLS;c2++){
+          const cellCnt=(r2-r1+1)*(c2-c1+1);
+          if(cellCnt<2) continue;
 
-          for (let r = r1; r <= r2; r++) {
-            for (let c = c1; c <= c2; c++) {
-              if (board[r][c] === 0) {
-                valid = false;   // 빈칸 포함 → 불가
-                break;
-              }
-              sum += board[r][c];
-              cellCount++;
-            }
-            if (!valid) break;
-          }
+          const sum =
+            sumP[r2+1][c2+1]-sumP[r1][c2+1]-sumP[r2+1][c1]+sumP[r1][c1];
+          if(sum!==10) continue;
 
-          if (!valid) continue;
-          if (cellCount < 2) continue;
-
-          if (sum === 10) {
-            count++;
-          }
+          const zero =
+            zeroP[r2+1][c2+1]-zeroP[r1][c2+1]-zeroP[r2+1][c1]+zeroP[r1][c1];
+          if(zero===0) count++;
         }
       }
     }
   }
-
   return count;
 }
 
 function updatePossible(){
-  const cnt = countMakeTen();
-  possibleEl.textContent = `가능 조합: ${cnt}개`;
-  return cnt;
+  possibleEl.textContent=`가능 조합: ${countMakeTen()}개`;
 }
 
 /* 선택 */
@@ -353,18 +347,12 @@ boardEl.onpointerup=()=>{
       if(board[r][c]>0){ sum+=board[r][c]; pos.push([r,c]); }
 
   if(sum===10 && pos.length>=2){
-    sfxPop.play();
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
       score+=pos.length;
       scoreEl.textContent=`점수: ${score}`;
       render();
-
-      //if(updatePossible()===0){
-        //showToast("⚠️ 더 이상 10을 만들 수 없습니다!",1000);
-        //setTimeout(endGame,1000);
-      //}
     },300);
   }
 };
@@ -374,13 +362,12 @@ async function endGame(){
   if(gameOver) return;
   gameOver=true;
   clearInterval(timerId);
-  sfxEnd.play();
   const name=prompt("닉네임 입력")||"PLAYER";
   await saveOnline(name.slice(0,10),score);
   showMain();
 }
 
-/* 시작 */
+/* 시작 버튼 (120초) */
 document.getElementById("startBtn").onclick=()=>{
   score=0;
   timeLeft=GAME_TIME;
@@ -391,16 +378,33 @@ document.getElementById("startBtn").onclick=()=>{
   showGame();
   startTimer();
 };
-document.getElementById("title").onclick=()=>{
-  score=0;
-  timeLeft=FIVE_TIME;
-  gameOver=false;
-  scoreEl.textContent="점수: 0";
-  initBoard();
-  render();
-  showGame();
-  startTimer();
-};
+
+/* 🍎 타이틀 롱프레스 (200초) */
+const titleEl = document.getElementById("title");
+let longPressTimer = null;
+
+function startLongPress(){
+  longPressTimer = setTimeout(()=>{
+    score=0;
+    timeLeft=FIVE_TIME;
+    gameOver=false;
+    scoreEl.textContent="점수: 0";
+    initBoard();
+    render();
+    showGame();
+    startTimer();
+    showToast("🍏 200초 히든 모드 시작!",1200);
+  },600); // 600ms 이상
+}
+function cancelLongPress(){
+  clearTimeout(longPressTimer);
+  longPressTimer=null;
+}
+
+titleEl.addEventListener("pointerdown", startLongPress);
+titleEl.addEventListener("pointerup", cancelLongPress);
+titleEl.addEventListener("pointerleave", cancelLongPress);
+titleEl.addEventListener("pointercancel", cancelLongPress);
 
 showMain();
 </script>
