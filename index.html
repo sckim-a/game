@@ -95,7 +95,8 @@ button{padding:6px 12px;font-size:14px;margin:4px;}
 const ROWS=12,COLS=10,GAME_TIME=120;
 let board=[],cells=[],visited=[];
 let selecting=false,score=0,timeLeft=GAME_TIME,timerId=null,gameOver=true;
-
+let gameStarted = false;
+  
 const boardEl=document.getElementById("board");
 const scoreEl=document.getElementById("score");
 const timerEl=document.getElementById("timer");
@@ -129,16 +130,31 @@ function render(){
 }
 
 function countMakeTen(){
-  let cnt=0;
-  for(let r1=0;r1<ROWS;r1++)for(let c1=0;c1<COLS;c1++){
-    if(board[r1][c1]===0)continue;
-    for(let r2=r1;r2<ROWS;r2++)for(let c2=c1;c2<COLS;c2++){
-      let sum=0,cells=0,ok=true;
-      for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++){
-        if(board[r][c]===0){ok=false;break;}
-        sum+=board[r][c];cells++;
+  let cnt = 0;
+
+  for(let r1=0; r1<ROWS; r1++){
+    for(let c1=0; c1<COLS; c1++){
+      for(let r2=r1; r2<ROWS; r2++){
+        for(let c2=c1; c2<COLS; c2++){
+
+          let sum = 0;
+          let numCount = 0;
+
+          for(let r=r1; r<=r2; r++){
+            for(let c=c1; c<=c2; c++){
+              const v = board[r][c];
+              if(v > 0){
+                sum += v;
+                numCount++;
+              }
+            }
+          }
+
+          if(numCount >= 2 && sum === 10){
+            cnt++;
+          }
+        }
       }
-      if(ok&&cells>=2&&sum===10)cnt++;
     }
   }
   return cnt;
@@ -150,26 +166,32 @@ function updatePossible(){
 
 function startTimer(){
   clearInterval(timerId);
-  timerId=setInterval(()=>{
+  timerId = setInterval(()=>{
+    if(!gameStarted) return;   // 🔥 핵심 방어
+
     timeLeft--;
-    timerEl.textContent=
+    timerEl.textContent =
       `${String(timeLeft/60|0).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
-    if(timeLeft<=0)endGame();
+
+    if(timeLeft <= 0){
+      endGame();
+    }
   },1000);
 }
 
 async function endGame(){
-  if(gameOver)return;
-  gameOver=true;
+  if(!gameStarted) return;   // 🔥 추가
+  if(gameOver) return;
+
+  gameOver = true;
+  gameStarted = false;       // 🔥 상태 종료
   clearInterval(timerId);
-  document.getElementById("finalScoreText").textContent=`내 점수: ${score}점`;
+
+  document.getElementById("finalScoreText").textContent =
+    `내 점수: ${score}점`;
+
   document.getElementById("resultModal").classList.remove("hidden");
 }
-
-document.getElementById("confirmResultBtn").onclick=()=>{
-  document.getElementById("resultModal").classList.add("hidden");
-  showMain();
-};
 
 function showMain(){
   mainScreen.classList.remove("hidden");
@@ -183,10 +205,16 @@ function showGame(){
 
 document.getElementById("startBtn").onclick=()=>{
   document.getElementById("resultModal").classList.add("hidden");
-  score=0;timeLeft=GAME_TIME;gameOver=false;
+  score=0;timeLeft=GAME_TIME;gameOver=false;gameStarted = true;
   initBoard();render();showGame();startTimer();
 };
 
+document.getElementById("confirmResultBtn").onclick = () => {
+  document.getElementById("resultModal").classList.add("hidden");
+  gameStarted = false;   // 🔥 확실히 리셋
+  showMain();
+};
+  
 boardEl.onpointerdown=()=>{if(gameOver)return;visited=[];selecting=true;};
 boardEl.onpointermove=e=>{
   if(!selecting)return;
