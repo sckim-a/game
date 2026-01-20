@@ -31,21 +31,10 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
   opacity:0;transition:.3s;pointer-events:none;z-index:100;
 }
 #toast.show{opacity:1;}
-#ranking{max-width:320px;margin:10px auto;text-align:left;padding:0;}
-#ranking li{list-style:none;margin:4px 0;padding:6px;border-radius:6px;font-size:14px;}
-.rank1{background:gold;font-weight:bold;}
-.rank2{background:silver;font-weight:bold;}
-.rank3{background:#cd7f32;font-weight:bold;}
-.rankN{background:#fff3cd;}
-#nicknameInput{width:120px;padding:6px;font-size:14px;}
-#saveNickBtn{padding:6px 12px;font-size:14px;margin-left:4px;}
-button{padding:6px 12px;font-size:14px;margin:4px;}
-#buttonGroup button {
-  width: 200px; margin: 0 auto; padding: 10px 0; font-size: 16px; border-radius: 6px;
-}
 #resultModal{
   position: fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  background: rgba(0,0,0,0.85); color:#fff; padding:20px; border-radius:10px; z-index:1000; text-align:center;
+  background: rgba(0,0,0,0.85); color:#fff; padding:20px;
+  border-radius:10px; z-index:1000;
 }
 </style>
 </head>
@@ -59,17 +48,12 @@ button{padding:6px 12px;font-size:14px;margin:4px;}
     <input id="nicknameInput" maxlength="10" placeholder="닉네임 입력">
     <button id="saveNickBtn">저장</button>
   </div>
-  <div id="buttonGroup" style="display:flex; flex-direction:column; gap:10px; margin:10px 0; align-items:center;">
-    <button id="startBtn">▶ 시작</button>
-  </div>
-  <h3 id="rankingTitle"></h3>
-  <ol id="ranking"></ol>
+  <button id="startBtn">▶ 시작</button>
 </div>
 
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
-    <div id="possible">가능 조합: 0개</div>
     <div id="timer">02:00</div>
   </div>
   <div id="board"></div>
@@ -78,56 +62,42 @@ button{padding:6px 12px;font-size:14px;margin:4px;}
 <div id="toast"></div>
 
 <div id="resultModal" class="hidden">
-  <div id="finalScoreText">점수: 0점</div>
+  <div id="finalScoreText"></div>
   <button id="confirmResultBtn">확인</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-/* Firebase */
-const firebaseConfig={
-  apiKey:"AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
-  authDomain:"applegame-32c01.firebaseapp.com",
-  projectId:"applegame-32c01"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
+<script>
 /* 🔊 사운드 */
-const popSound = new Audio("pop.mp3");
-const endSound = new Audio("end.mp3");
-[popSound, endSound].forEach(s=>{
-  s.preload="auto";
-  s.volume=0.6;
-});
+const popSound = new Audio("pop.wav");
+const endSound = new Audio("end.wav");
+[popSound,endSound].forEach(s=>{s.preload="auto";s.volume=0.6;});
 
 /* 설정 */
-const ROWS=12, COLS=10, GAME_TIME=120;
+const ROWS=12, COLS=10;
+const GAME_TIME=120;
 
 /* 상태 */
 let board=[], cells=[], visited=[];
-let selecting=false, score=0, timeLeft=GAME_TIME;
-let gameOver=true, gameStarted=false;
+let selecting=false, score=0;
+let timeLeft=GAME_TIME;
 let timerId=null;
+let gameStarted=false;
+let gameOver=true;
+
+/* 히든모드 */
+let hiddenMode=false;
+let pressTimer=null;
 
 /* DOM */
 const boardEl=document.getElementById("board");
 const scoreEl=document.getElementById("score");
 const timerEl=document.getElementById("timer");
-const possibleEl=document.getElementById("possible");
 const toastEl=document.getElementById("toast");
 const mainScreen=document.getElementById("mainScreen");
 const gameScreen=document.getElementById("gameScreen");
-const rankingEl=document.getElementById("ranking");
-const rankingTitleEl=document.getElementById("rankingTitle");
 const nickInput=document.getElementById("nicknameInput");
 const resultModal=document.getElementById("resultModal");
 const finalScoreText=document.getElementById("finalScoreText");
-const confirmBtn=document.getElementById("confirmResultBtn");
 
 /* 닉네임 */
 function loadNick(){
@@ -135,26 +105,36 @@ function loadNick(){
   if(n) nickInput.value=n;
 }
 function saveNick(){
-  const n=nickInput.value.trim().slice(0,10);
+  const n=nickInput.value.trim();
   if(!n) return alert("닉네임 입력");
   localStorage.setItem("apple_nick",n);
 }
 function getNick(){return localStorage.getItem("apple_nick")||"";}
-function requireNick(){
-  if(!getNick().trim()){
-    alert("닉네임을 먼저 입력해주세요!");
-    nickInput.focus();
-    return false;
-  }
-  return true;
-}
 document.getElementById("saveNickBtn").onclick=saveNick;
 loadNick();
 
+/* 토스트 */
+function showToast(msg){
+  toastEl.textContent=msg;
+  toastEl.classList.add("show");
+  setTimeout(()=>toastEl.classList.remove("show"),1000);
+}
+
+/* 🍎 타이틀 길게 누르기 (sc 전용) */
+const titleEl=document.getElementById("title");
+titleEl.onpointerdown=()=>{
+  pressTimer=setTimeout(()=>{
+    if(getNick()!=="sc") return;
+    hiddenMode=!hiddenMode;
+    showToast(hiddenMode?"🍏 히든모드 ON":"🍎 히든모드 OFF");
+  },1500);
+};
+titleEl.onpointerup=titleEl.onpointerleave=()=>clearTimeout(pressTimer);
+
 /* 보드 */
 function initBoard(){
-  board=Array.from({length:ROWS},()=>Array.from({length:COLS},
-    ()=>Math.floor(Math.random()*9)+1
+  board=Array.from({length:ROWS},()=>Array.from(
+    {length:COLS},()=>Math.floor(Math.random()*9)+1
   ));
 }
 function render(){
@@ -164,8 +144,7 @@ function render(){
     const d=document.createElement("div");
     d.className="cell"+(v===0?" empty":"");
     d.textContent=v||"";
-    d.dataset.r=i;
-    d.dataset.c=j;
+    d.dataset.r=i; d.dataset.c=j;
     boardEl.appendChild(d);
     cells.push(d);
   }));
@@ -184,11 +163,7 @@ function startTimer(){
 }
 
 /* 선택 */
-boardEl.onpointerdown=()=>{
-  if(gameOver) return;
-  visited=[];
-  selecting=true;
-};
+boardEl.onpointerdown=()=>{ if(gameOver) return; visited=[]; selecting=true; };
 boardEl.onpointermove=e=>{
   if(!selecting) return;
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -196,39 +171,15 @@ boardEl.onpointermove=e=>{
   const r=+el.dataset.r,c=+el.dataset.c;
   if(visited.some(v=>v[0]==r&&v[1]==c))return;
   visited.push([r,c]);
-  const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
-  const mr=Math.min(...rs),Mr=Math.max(...rs),
-        mc=Math.min(...cs),Mc=Math.max(...cs);
-  cells.forEach(x=>{
-    const rr=+x.dataset.r,cc=+x.dataset.c;
-    x.classList.toggle("selected",
-      rr>=mr&&rr<=Mr&&cc>=mc&&cc<=Mc
-    );
-  });
 };
 boardEl.onpointerup=()=>{
   selecting=false;
   if(!visited.length) return;
-
-  const rs=visited.map(v=>v[0]),cs=visited.map(v=>v[1]);
-  const mr=Math.min(...rs),Mr=Math.max(...rs),
-        mc=Math.min(...cs),Mc=Math.max(...cs);
-
   let sum=0,pos=[];
-  for(let r=mr;r<=Mr;r++)
-    for(let c=mc;c<=Mc;c++){
-      sum+=board[r][c];
-      pos.push([r,c]);
-    }
-
-  if(sum===10 && pos.length>=2){
-    popSound.currentTime=0;
-    popSound.play();
-
-    pos.forEach(([r,c])=>{
-      cells[r*COLS+c].classList.add("pop");
-    });
-
+  visited.forEach(([r,c])=>{sum+=board[r][c];pos.push([r,c]);});
+  if(sum===10&&pos.length>=2){
+    popSound.currentTime=0; popSound.play();
+    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
       score+=pos.length;
@@ -238,22 +189,16 @@ boardEl.onpointerup=()=>{
   }
 };
 
-/* 게임 종료 */
-async function endGame(){
+/* 종료 */
+function endGame(){
   if(gameOver) return;
-  gameOver=true;
-  gameStarted=false;
+  gameOver=true; gameStarted=false;
   clearInterval(timerId);
-
-  endSound.currentTime=0;
-  endSound.play();
-
+  endSound.currentTime=0; endSound.play();
   finalScoreText.textContent=`내 점수: ${score}점`;
   resultModal.classList.remove("hidden");
 }
-
-/* 확인 */
-confirmBtn.onclick=()=>{
+document.getElementById("confirmResultBtn").onclick=()=>{
   resultModal.classList.add("hidden");
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
@@ -261,18 +206,14 @@ confirmBtn.onclick=()=>{
 
 /* 시작 */
 document.getElementById("startBtn").onclick=()=>{
-  if(!requireNick()) return;
-
-  clearInterval(timerId);
+  if(!getNick()) return alert("닉네임 입력");
   score=0;
   scoreEl.textContent="점수: 0";
-  timeLeft=GAME_TIME;
-  timerEl.textContent="02:00";
-  gameOver=false;
-  gameStarted=true;
-
-  initBoard();
-  render();
+  timeLeft=hiddenMode?180:GAME_TIME;
+  timerEl.textContent=
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+  gameOver=false; gameStarted=true;
+  initBoard(); render();
   mainScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
   startTimer();
