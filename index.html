@@ -218,16 +218,36 @@ async function saveRank(score){
 }
 
 async function loadRanking(){
-  const w=getWeek();
-  rankingTitleEl.textContent=`📅 ${w} 주간 랭킹`;
-  rankingEl.innerHTML="";
-  const q=query(collection(db,"ranking"),where("week","==",w),orderBy("score","desc"),limit(20));
-  const snap=await getDocs(q);
-  let i=1;
+  const w = getWeek();
+  rankingTitleEl.textContent = `📅 ${w} 주간 랭킹`;
+  rankingEl.innerHTML = "";
+
+  const q = query(
+    collection(db,"ranking"),
+    where("week","==",w),
+    orderBy("score","desc"),
+    limit(20)
+  );
+
+  const snap = await getDocs(q);
+  let i = 1;
   snap.forEach(d=>{
-    const li=document.createElement("li");
-    li.textContent=`${i++}위 · ${d.data().name} · ${d.data().score}`;
+    const li = document.createElement("li");
+    li.textContent = `${i}위 · ${d.data().name} · ${d.data().score}`;
+
+    // ⭐ 1,2,3위 강조
+    if(i === 1) li.style.background = "gold";
+    else if(i === 2) li.style.background = "silver";
+    else if(i === 3) li.style.background = "#cd7f32"; // 동메달
+    else li.style.background = "#fff3cd"; // 나머지
+
+    li.style.fontWeight = i <= 3 ? "bold" : "normal";
+    li.style.padding = "6px";
+    li.style.margin = "4px 0";
+    li.style.borderRadius = "6px";
+
     rankingEl.appendChild(li);
+    i++;
   });
 }
 
