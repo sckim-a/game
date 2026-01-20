@@ -107,7 +107,9 @@ const gameScreen=document.getElementById("gameScreen");
 const rankingEl=document.getElementById("ranking");
 const rankingTitleEl=document.getElementById("rankingTitle");
 const nickInput=document.getElementById("nicknameInput");
-
+const resultModal = document.getElementById("resultModal");
+if(resultModal) resultModal.classList.add("hidden");
+  
 function seededRandom(s){
   return Math.abs(Math.sin(s)*10000)%1;
 }
@@ -231,8 +233,9 @@ document.getElementById("startBtn").onclick = () => {
 };
 
 document.getElementById("confirmResultBtn").onclick = () => {
-  document.getElementById("resultModal").classList.add("hidden");
-  showMain();
+  const modal = document.getElementById("resultModal");
+  if(modal) modal.classList.add("hidden"); // 숨기기
+  showMain(); // 메인 화면으로
 };
   
 boardEl.onpointerdown=()=>{if(gameOver)return;visited=[];selecting=true;};
