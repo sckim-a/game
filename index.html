@@ -96,7 +96,8 @@ const ROWS=12,COLS=10,GAME_TIME=120;
 let board=[],cells=[],visited=[];
 let selecting=false,score=0,timeLeft=GAME_TIME,timerId=null,gameOver=true;
 let gameStarted = false;
-  
+let timerId = null;
+
 const boardEl=document.getElementById("board");
 const scoreEl=document.getElementById("score");
 const timerEl=document.getElementById("timer");
@@ -164,32 +165,35 @@ function updatePossible(){
   possibleEl.textContent=`가능 조합: ${countMakeTen()}개`;
 }
 
-function startTimer(){
+function startTimer() {
   clearInterval(timerId);
-  timerId = setInterval(()=>{
-    if(!gameStarted) return;   // 🔥 핵심 방어
+  timerId = setInterval(() => {
+    if(!gameStarted) return;   // 🔹 게임 시작 전이면 아무 것도 안함
 
     timeLeft--;
-    timerEl.textContent =
-      `${String(timeLeft/60|0).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+    timerEl.textContent = `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
 
-    if(timeLeft <= 0){
-      endGame();
-    }
-  },1000);
+    if(timeLeft <= 0) endGame();
+  }, 1000);
 }
 
 async function endGame(){
-  if(!gameStarted) return;   // 🔥 추가
+  if(!gameStarted) return;   // 🔹 게임 시작 전이면 무시
   if(gameOver) return;
 
   gameOver = true;
-  gameStarted = false;       // 🔥 상태 종료
+  gameStarted = false;
   clearInterval(timerId);
 
-  document.getElementById("finalScoreText").textContent =
-    `내 점수: ${score}점`;
+  // 점수 기록 등 처리
+  if(battleRoomId){
+    await updateDoc(doc(db,"rooms",battleRoomId), {
+      [`players.${battleRole}.score`]: score
+    });
+  } else await saveRank(score);
 
+  // 알림 표시
+  document.getElementById("finalScoreText").textContent = `내 점수: ${score}점`;
   document.getElementById("resultModal").classList.remove("hidden");
 }
 
@@ -203,15 +207,31 @@ function showGame(){
   gameScreen.classList.remove("hidden");
 }
 
-document.getElementById("startBtn").onclick=()=>{
+document.getElementById("startBtn").onclick = () => {
+  if(!requireNick()) return;
+
+  // 모달 초기화
   document.getElementById("resultModal").classList.add("hidden");
-  score=0;timeLeft=GAME_TIME;gameOver=false;gameStarted = true;
-  initBoard();render();showGame();startTimer();
+
+  // 상태 초기화
+  score = 0;
+  timeLeft = GAME_TIME;
+  gameOver = false;
+  gameStarted = true;  // 🔹 반드시 타이머 등록 전
+
+  // 보드 초기화
+  initBoard();
+  render();
+
+  // 화면 전환
+  showGame();
+
+  // 타이머 시작
+  startTimer();
 };
 
 document.getElementById("confirmResultBtn").onclick = () => {
   document.getElementById("resultModal").classList.add("hidden");
-  gameStarted = false;   // 🔥 확실히 리셋
   showMain();
 };
   
