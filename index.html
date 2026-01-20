@@ -172,6 +172,19 @@ function startTimer(){
   },1000);
 }
 
+function clearSelection(){
+  cells.forEach(c=>c.classList.remove("selected"));
+}
+
+function highlightSelection(r1, r2, c1, c2){
+  clearSelection();
+  for(let r=r1; r<=r2; r++){
+    for(let c=c1; c<=c2; c++){
+      cells[r*COLS + c].classList.add("selected");
+    }
+  }
+}
+  
 /* ===================== 선택 & 점수 ===================== */
 boardEl.onpointerdown = e => {
   if(gameOver) return;
@@ -194,6 +207,13 @@ boardEl.onpointermove = e => {
   if(!el || !el.classList.contains("cell")) return;
 
   endPos = [+el.dataset.r, +el.dataset.c];
+
+  const r1 = Math.min(startPos[0], endPos[0]);
+  const r2 = Math.max(startPos[0], endPos[0]);
+  const c1 = Math.min(startPos[1], endPos[1]);
+  const c2 = Math.max(startPos[1], endPos[1]);
+
+  highlightSelection(r1, r2, c1, c2);
 };
 
 boardEl.onpointerup = e => {
@@ -238,6 +258,7 @@ boardEl.onpointerup = e => {
   }
 
   startPos = endPos = null;
+  clearSelection(); // ★ 선택 표시 제거
 };
 
 /* ===================== 랭킹 ===================== */
