@@ -171,35 +171,51 @@ function startTimer(){
 }
 
 /* ===================== 선택 & 점수 ===================== */
-boardEl.onpointerdown=()=>{ if(gameOver) return; visited=[]; selecting=true; };
+boardEl.onpointerdown=e=>{
+  const el=e.target;
+  if(!el.classList.contains("cell")) return;
+  selecting=true;
+  startCell=[+el.dataset.r,+el.dataset.c];
+};
+
 boardEl.onpointermove=e=>{
   if(!selecting) return;
   const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el||!el.classList.contains("cell"))return;
-  const r=+el.dataset.r,c=+el.dataset.c;
-  if(visited.some(v=>v[0]==r&&v[1]==c))return;
-  visited.push([r,c]);
+  if(!el||!el.classList.contains("cell")) return;
+  endCell=[+el.dataset.r,+el.dataset.c];
 };
+
 boardEl.onpointerup=()=>{
   selecting=false;
-  if(!visited.length) return;
+  if(!startCell||!endCell) return;
 
-  let sum=0, appleCount=0, pos=[];
-  visited.forEach(([r,c])=>{
-    sum += board[r][c];
-    if(board[r][c]>0){appleCount++; pos.push([r,c]);}  // 사과만
-  });
+  const r1=Math.min(startCell[0],endCell[0]);
+  const r2=Math.max(startCell[0],endCell[0]);
+  const c1=Math.min(startCell[1],endCell[1]);
+  const c2=Math.max(startCell[1],endCell[1]);
 
-  if(sum===10 && appleCount>=2){
-    popSound.currentTime=0; popSound.play();
+  let sum=0, pos=[];
+
+  for(let r=r1;r<=r2;r++){
+    for(let c=c1;c<=c2;c++){
+      if(board[r][c]>0){
+        sum+=board[r][c];
+        pos.push([r,c]);
+      }
+    }
+  }
+
+  if(sum===10 && pos.length>=2){
     pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
-      score += appleCount;
+      score+=pos.length;
       scoreEl.textContent=`점수: ${score}`;
       render();
-    },400); // 애니메이션 시간과 맞춤
+    },400);
   }
+
+  startCell=endCell=null;
 };
 
 /* ===================== 랭킹 ===================== */
