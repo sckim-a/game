@@ -171,51 +171,71 @@ function startTimer(){
 }
 
 /* ===================== 선택 & 점수 ===================== */
-boardEl.onpointerdown=e=>{
-  const el=e.target;
+boardEl.onpointerdown = e => {
+  if(gameOver) return;
+
+  const el = e.target;
   if(!el.classList.contains("cell")) return;
-  selecting=true;
-  startCell=[+el.dataset.r,+el.dataset.c];
+
+  e.preventDefault(); // ★ 중요
+  boardEl.setPointerCapture(e.pointerId); // ★ 핵심
+
+  selecting = true;
+  startPos = [+el.dataset.r, +el.dataset.c];
+  endPos = startPos;
 };
 
-boardEl.onpointermove=e=>{
+boardEl.onpointermove = e => {
   if(!selecting) return;
-  const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el||!el.classList.contains("cell")) return;
-  endCell=[+el.dataset.r,+el.dataset.c];
+
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if(!el || !el.classList.contains("cell")) return;
+
+  endPos = [+el.dataset.r, +el.dataset.c];
 };
 
-boardEl.onpointerup=()=>{
-  selecting=false;
-  if(!startCell||!endCell) return;
+boardEl.onpointerup = e => {
+  if(!selecting) return;
 
-  const r1=Math.min(startCell[0],endCell[0]);
-  const r2=Math.max(startCell[0],endCell[0]);
-  const c1=Math.min(startCell[1],endCell[1]);
-  const c2=Math.max(startCell[1],endCell[1]);
+  selecting = false;
+  boardEl.releasePointerCapture(e.pointerId); // ★ 필수
 
-  let sum=0, pos=[];
+  if(!startPos || !endPos) return;
+
+  const r1 = Math.min(startPos[0], endPos[0]);
+  const r2 = Math.max(startPos[0], endPos[0]);
+  const c1 = Math.min(startPos[1], endPos[1]);
+  const c2 = Math.max(startPos[1], endPos[1]);
+
+  let sum = 0, appleCount = 0, pos = [];
 
   for(let r=r1;r<=r2;r++){
     for(let c=c1;c<=c2;c++){
-      if(board[r][c]>0){
-        sum+=board[r][c];
+      if(board[r][c] > 0){
+        sum += board[r][c];
+        appleCount++;
         pos.push([r,c]);
       }
     }
   }
 
-  if(sum===10 && pos.length>=2){
-    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
+  if(sum === 10 && appleCount >= 2){
+    popSound.currentTime = 0;
+    popSound.play();
+
+    pos.forEach(([r,c])=>{
+      cells[r*COLS+c].classList.add("pop");
+    });
+
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
-      score+=pos.length;
-      scoreEl.textContent=`점수: ${score}`;
+      score += appleCount;
+      scoreEl.textContent = `점수: ${score}`;
       render();
     },400);
   }
 
-  startCell=endCell=null;
+  startPos = endPos = null;
 };
 
 /* ===================== 랭킹 ===================== */
