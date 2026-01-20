@@ -229,8 +229,21 @@ confirmBtn.onclick=()=>{
 /* 게임 시작 */
 document.getElementById("startBtn").onclick=()=>{
   if(!requireNick()) return;
-  score=0; timeLeft=GAME_TIME; gameOver=false; gameStarted=true;
-  initBoard(); render(); showGame(); startTimer();
+
+  clearInterval(timerId);   // ⭐ 기존 타이머 제거
+  score = 0;
+  scoreEl.textContent = "점수: 0";  // ⭐ UI도 즉시 초기화
+  timeLeft = GAME_TIME;
+  timerEl.textContent = "02:00";
+
+  gameOver = false;
+  gameStarted = true;
+  visited = [];
+
+  initBoard();
+  render();
+  showGame();
+  startTimer();
 };
 
 showMain();
