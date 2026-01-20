@@ -172,18 +172,37 @@ boardEl.onpointermove=e=>{
   if(visited.some(v=>v[0]==r&&v[1]==c))return;
   visited.push([r,c]);
 };
-boardEl.onpointerup=()=>{
-  selecting=false;
-  if(!visited.length) return;
-  let sum=0,pos=[];
-  visited.forEach(([r,c])=>{sum+=board[r][c];pos.push([r,c]);});
-  if(sum===10&&pos.length>=2){
-    popSound.currentTime=0; popSound.play();
-    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
+boardEl.onpointerup = () => {
+  selecting = false;
+  if (!visited.length) return;
+
+  let sum = 0;
+  let appleCount = 0;
+  let pos = [];
+
+  visited.forEach(([r,c])=>{
+    sum += board[r][c];
+    if (board[r][c] > 0) {      // ⭐ 사과만
+      appleCount++;
+      pos.push([r,c]);
+    }
+  });
+
+  if (sum === 10 && appleCount >= 2) {
+    popSound.currentTime = 0;
+    popSound.play();
+
+    pos.forEach(([r,c])=>{
+      cells[r*COLS+c].classList.add("pop");
+    });
+
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
-      score+=pos.length;
-      scoreEl.textContent=`점수: ${score}`;
+
+      // ⭐ 사과 개수만큼 점수
+      score += appleCount;
+      scoreEl.textContent = `점수: ${score}`;
+
       render();
     },300);
   }
