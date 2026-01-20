@@ -31,6 +31,8 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
   opacity:0;transition:.3s;pointer-events:none;z-index:100;
 }
 #toast.show{opacity:1;}
+#ranking{max-width:320px;margin:10px auto;text-align:left;padding:0;}
+#ranking li{list-style:none;margin:4px 0;padding:6px;border-radius:6px;font-size:14px;}
 #resultModal{
   position: fixed; top:50%; left:50%; transform:translate(-50%,-50%);
   background: rgba(0,0,0,0.85); color:#fff; padding:20px;
@@ -49,6 +51,9 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
     <button id="saveNickBtn">저장</button>
   </div>
   <button id="startBtn">▶ 시작</button>
+
+  <h3 id="rankingTitle"></h3>
+  <ol id="ranking"></ol>
 </div>
 
 <div id="gameScreen" class="hidden">
@@ -66,29 +71,34 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
   <button id="confirmResultBtn">확인</button>
 </div>
 
-<script>
-/* 🔊 사운드 */
-const popSound = new Audio("pop.wav");
-const endSound = new Audio("end.wav");
-[popSound,endSound].forEach(s=>{s.preload="auto";s.volume=0.6;});
+<script type="module">
+/* ===================== Firebase ===================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 설정 */
-const ROWS=12, COLS=10;
-const GAME_TIME=120;
+const firebaseConfig={
+  apiKey:"AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
+  authDomain:"applegame-32c01.firebaseapp.com",
+  projectId:"applegame-32c01"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-/* 상태 */
+/* ===================== 설정 ===================== */
+const ROWS=12, COLS=10, GAME_TIME=120;
+
+/* ===================== 상태 ===================== */
 let board=[], cells=[], visited=[];
 let selecting=false, score=0;
 let timeLeft=GAME_TIME;
 let timerId=null;
-let gameStarted=false;
-let gameOver=true;
+let gameStarted=false, gameOver=true;
 
 /* 히든모드 */
 let hiddenMode=false;
 let pressTimer=null;
 
-/* DOM */
+/* ===================== DOM ===================== */
 const boardEl=document.getElementById("board");
 const scoreEl=document.getElementById("score");
 const timerEl=document.getElementById("timer");
@@ -98,29 +108,25 @@ const gameScreen=document.getElementById("gameScreen");
 const nickInput=document.getElementById("nicknameInput");
 const resultModal=document.getElementById("resultModal");
 const finalScoreText=document.getElementById("finalScoreText");
+const rankingEl=document.getElementById("ranking");
+const rankingTitleEl=document.getElementById("rankingTitle");
 
-/* 닉네임 */
-function loadNick(){
-  const n=localStorage.getItem("apple_nick");
-  if(n) nickInput.value=n;
-}
-function saveNick(){
-  const n=nickInput.value.trim();
-  if(!n) return alert("닉네임 입력");
-  localStorage.setItem("apple_nick",n);
-}
+/* ===================== 사운드 ===================== */
+const popSound = new Audio("pop.mp3");
+const endSound = new Audio("end.mp3");
+[popSound,endSound].forEach(s=>{s.preload="auto";s.volume=0.6;});
+
+/* ===================== 닉네임 ===================== */
+function loadNick(){const n=localStorage.getItem("apple_nick");if(n) nickInput.value=n;}
+function saveNick(){const n=nickInput.value.trim();if(!n) return alert("닉네임 입력"); localStorage.setItem("apple_nick",n);}
 function getNick(){return localStorage.getItem("apple_nick")||"";}
 document.getElementById("saveNickBtn").onclick=saveNick;
 loadNick();
 
-/* 토스트 */
-function showToast(msg){
-  toastEl.textContent=msg;
-  toastEl.classList.add("show");
-  setTimeout(()=>toastEl.classList.remove("show"),1000);
-}
+/* ===================== 토스트 ===================== */
+function showToast(msg){toastEl.textContent=msg; toastEl.classList.add("show"); setTimeout(()=>toastEl.classList.remove("show"),1000);}
 
-/* 🍎 타이틀 길게 누르기 (sc 전용) */
+/* ===================== 히든모드 ===================== */
 const titleEl=document.getElementById("title");
 titleEl.onpointerdown=()=>{
   pressTimer=setTimeout(()=>{
@@ -131,15 +137,12 @@ titleEl.onpointerdown=()=>{
 };
 titleEl.onpointerup=titleEl.onpointerleave=()=>clearTimeout(pressTimer);
 
-/* 보드 */
+/* ===================== 보드 ===================== */
 function initBoard(){
-  board=Array.from({length:ROWS},()=>Array.from(
-    {length:COLS},()=>Math.floor(Math.random()*9)+1
-  ));
+  board=Array.from({length:ROWS},()=>Array.from({length:COLS},()=>Math.floor(Math.random()*9)+1));
 }
 function render(){
-  boardEl.innerHTML="";
-  cells=[];
+  boardEl.innerHTML=""; cells=[];
   board.forEach((r,i)=>r.forEach((v,j)=>{
     const d=document.createElement("div");
     d.className="cell"+(v===0?" empty":"");
@@ -150,7 +153,7 @@ function render(){
   }));
 }
 
-/* 타이머 */
+/* ===================== 타이머 ===================== */
 function startTimer(){
   clearInterval(timerId);
   timerId=setInterval(()=>{
@@ -162,7 +165,7 @@ function startTimer(){
   },1000);
 }
 
-/* 선택 */
+/* ===================== 선택 & 점수 ===================== */
 boardEl.onpointerdown=()=>{ if(gameOver) return; visited=[]; selecting=true; };
 boardEl.onpointermove=e=>{
   if(!selecting) return;
@@ -172,63 +175,86 @@ boardEl.onpointermove=e=>{
   if(visited.some(v=>v[0]==r&&v[1]==c))return;
   visited.push([r,c]);
 };
-boardEl.onpointerup = () => {
-  selecting = false;
-  if (!visited.length) return;
+boardEl.onpointerup=()=>{
+  selecting=false;
+  if(!visited.length) return;
 
-  let sum = 0;
-  let appleCount = 0;
-  let pos = [];
-
+  let sum=0, appleCount=0, pos=[];
   visited.forEach(([r,c])=>{
     sum += board[r][c];
-    if (board[r][c] > 0) {      // ⭐ 사과만
-      appleCount++;
-      pos.push([r,c]);
-    }
+    if(board[r][c]>0){appleCount++; pos.push([r,c]);}  // 사과만
   });
 
-  if (sum === 10 && appleCount >= 2) {
-    popSound.currentTime = 0;
-    popSound.play();
-
-    pos.forEach(([r,c])=>{
-      cells[r*COLS+c].classList.add("pop");
-    });
-
+  if(sum===10 && appleCount>=2){
+    popSound.currentTime=0; popSound.play();
+    pos.forEach(([r,c])=>cells[r*COLS+c].classList.add("pop"));
     setTimeout(()=>{
       pos.forEach(([r,c])=>board[r][c]=0);
-
-      // ⭐ 사과 개수만큼 점수
       score += appleCount;
-      scoreEl.textContent = `점수: ${score}`;
-
+      scoreEl.textContent=`점수: ${score}`;
       render();
     },300);
   }
 };
 
-/* 종료 */
-function endGame(){
+/* ===================== 랭킹 ===================== */
+function getWeek(){
+  const d=new Date();
+  const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=u.getUTCDay()||7;
+  u.setUTCDate(u.getUTCDate()+4-day);
+  const y=new Date(Date.UTC(u.getUTCFullYear(),0,1));
+  const w=Math.ceil((((u-y)/86400000)+1)/7);
+  return `${u.getUTCFullYear()}-W${String(w).padStart(2,"0")}`;
+}
+
+async function saveRank(score){
+  await addDoc(collection(db,"ranking"),{
+    name:getNick(),
+    score,
+    week:getWeek(),
+    date:new Date()
+  });
+}
+
+async function loadRanking(){
+  const w=getWeek();
+  rankingTitleEl.textContent=`📅 ${w} 주간 랭킹`;
+  rankingEl.innerHTML="";
+  const q=query(collection(db,"ranking"),where("week","==",w),orderBy("score","desc"),limit(20));
+  const snap=await getDocs(q);
+  let i=1;
+  snap.forEach(d=>{
+    const li=document.createElement("li");
+    li.textContent=`${i++}위 · ${d.data().name} · ${d.data().score}`;
+    rankingEl.appendChild(li);
+  });
+}
+
+/* ===================== 게임 종료 ===================== */
+async function endGame(){
   if(gameOver) return;
   gameOver=true; gameStarted=false;
   clearInterval(timerId);
   endSound.currentTime=0; endSound.play();
+  await saveRank(score);
   finalScoreText.textContent=`내 점수: ${score}점`;
   resultModal.classList.remove("hidden");
 }
+
 document.getElementById("confirmResultBtn").onclick=()=>{
   resultModal.classList.add("hidden");
   mainScreen.classList.remove("hidden");
   gameScreen.classList.add("hidden");
+  loadRanking();
 };
 
-/* 시작 */
+/* ===================== 게임 시작 ===================== */
 document.getElementById("startBtn").onclick=()=>{
   if(!getNick()) return alert("닉네임 입력");
   score=0;
   scoreEl.textContent="점수: 0";
-  timeLeft=hiddenMode?180:GAME_TIME;
+  timeLeft = hiddenMode?180:GAME_TIME;
   timerEl.textContent=
     `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
   gameOver=false; gameStarted=true;
@@ -237,6 +263,9 @@ document.getElementById("startBtn").onclick=()=>{
   gameScreen.classList.remove("hidden");
   startTimer();
 };
+
+/* ===================== 초기 화면 ===================== */
+loadRanking();
 </script>
 </body>
 </html>
