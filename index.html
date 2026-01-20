@@ -22,8 +22,12 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
 }
 .cell.empty{background:#ddd;color:transparent;border-radius:6px;}
 .selected{outline:3px solid #ffd43b;}
-@keyframes pop{0%{transform:scale(1)}60%{transform:scale(1.3)}100%{transform:scale(0)}}
-.pop{animation:pop .3s forwards;}
+@keyframes pop{
+  0%   { transform: scale(1) rotate(0deg); opacity: 1; }
+  50%  { transform: scale(1.5) rotate(15deg); opacity: 1; }
+  100% { transform: scale(0) rotate(45deg); opacity: 0; }
+}
+.pop{animation: pop 0.4s forwards;}
 #toast{
   position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
   background:rgba(0,0,0,.8);color:#fff;
@@ -90,7 +94,7 @@ const ROWS=12, COLS=10, GAME_TIME=120;
 /* ===================== 상태 ===================== */
 let board=[], cells=[], visited=[];
 let selecting=false, score=0;
-let timeLeft=GAME_TIME;
+let timeLeft = GAME_TIME;
 let timerId=null;
 let gameStarted=false, gameOver=true;
 
@@ -112,8 +116,8 @@ const rankingEl=document.getElementById("ranking");
 const rankingTitleEl=document.getElementById("rankingTitle");
 
 /* ===================== 사운드 ===================== */
-const popSound = new Audio("pop.wav");
-const endSound = new Audio("end.wav");
+const popSound = new Audio("pop.mp3");
+const endSound = new Audio("end.mp3");
 [popSound,endSound].forEach(s=>{s.preload="auto";s.volume=0.6;});
 
 /* ===================== 닉네임 ===================== */
@@ -193,7 +197,7 @@ boardEl.onpointerup=()=>{
       score += appleCount;
       scoreEl.textContent=`점수: ${score}`;
       render();
-    },300);
+    },400); // 애니메이션 시간과 맞춤
   }
 };
 
@@ -235,16 +239,16 @@ async function loadRanking(){
     const li = document.createElement("li");
     li.textContent = `${i}위 · ${d.data().name} · ${d.data().score}`;
 
-    // ⭐ 1,2,3위 강조
-    if(i === 1) li.style.background = "gold";
-    else if(i === 2) li.style.background = "silver";
-    else if(i === 3) li.style.background = "#cd7f32"; // 동메달
-    else li.style.background = "#fff3cd"; // 나머지
+    // 1,2,3위 강조
+    if(i===1) li.style.background="gold";
+    else if(i===2) li.style.background="silver";
+    else if(i===3) li.style.background="#cd7f32";
+    else li.style.background="#fff3cd";
 
-    li.style.fontWeight = i <= 3 ? "bold" : "normal";
-    li.style.padding = "6px";
-    li.style.margin = "4px 0";
-    li.style.borderRadius = "6px";
+    li.style.fontWeight = i<=3?"bold":"normal";
+    li.style.padding="6px";
+    li.style.margin="4px 0";
+    li.style.borderRadius="6px";
 
     rankingEl.appendChild(li);
     i++;
