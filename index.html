@@ -64,7 +64,7 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
 <div id="gameScreen" class="hidden">
   <div id="info">
     <div id="score">점수: 0</div>
-    <div id="timer">02:00</div>
+    <div id="timer">02:30</div>
   </div>
   <div id="board"></div>
 </div>
@@ -90,7 +90,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* ===================== 설정 ===================== */
-const ROWS=12, COLS=10, GAME_TIME=120;
+const ROWS=12, COLS=10, GAME_TIME=150;
 
 /* ===================== 상태 ===================== */
 let board=[], cells=[], visited=[];
@@ -290,7 +290,7 @@ async function loadRanking(){
     collection(db,"ranking"),
     where("week","==",w),
     orderBy("score","desc"),
-    limit(20)
+    limit(50)
   );
 
   const snap = await getDocs(q);
