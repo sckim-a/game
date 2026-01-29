@@ -338,7 +338,7 @@ document.getElementById("startBtn").onclick=()=>{
   if(!getNick()) return alert("닉네임 입력");
   score=0;
   scoreEl.textContent="점수: 0";
-  timeLeft = hiddenMode?180:GAME_TIME;
+  timeLeft = hiddenMode?210:GAME_TIME;
   timerEl.textContent=
     `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
   gameOver=false; gameStarted=true;
