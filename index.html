@@ -84,7 +84,8 @@ body{margin:0;font-family:Arial,sans-serif;text-align:center;}
 /* ===================== Firebase ===================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+import { signInAnonymously } from "firebase/auth";
+  
 const firebaseConfig={
   apiKey:"AIzaSyCJUkB5D5Fm35Sgyd7gw9sLInL4toKArMg",
   authDomain:"applegame-32c01.firebaseapp.com",
@@ -93,6 +94,13 @@ const firebaseConfig={
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+  signInAnonymously(auth)
+  .then(() => {
+    console.log("익명 로그인 성공");
+  })
+  .catch((error) => {
+    console.error(error);
+  });
 /* ===================== 설정 ===================== */
 const ROWS=12, COLS=10, GAME_TIME=150;
 
