@@ -20,18 +20,9 @@ body{
 #info{
   display:flex;
   justify-content:center;
-  gap:14px;
+  gap:20px;
   margin:10px 0;
   font-weight:bold;
-  flex-wrap:wrap;
-}
-
-.info-box{
-  background:#fff;
-  padding:8px 12px;
-  border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.08);
-  min-width:90px;
 }
 
 #board{
@@ -100,29 +91,16 @@ body{
   opacity:1;
 }
 
-.modal{
+#resultModal{
   position: fixed;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  background: rgba(0,0,0,0.88);
+  background: rgba(0,0,0,0.85);
   color:#fff;
   padding:20px;
-  border-radius:12px;
+  border-radius:10px;
   z-index:1000;
-  width:min(82vw, 320px);
-  box-sizing:border-box;
-}
-
-.modal button{
-  margin-top:14px;
-  border:none;
-  background:#ff7b7b;
-  color:#fff;
-  font-weight:bold;
-  padding:10px 16px;
-  border-radius:8px;
-  cursor:pointer;
 }
 
 .ranking-wrap{
@@ -228,23 +206,17 @@ body{
 
 <div id="gameScreen" class="hidden">
   <div id="info">
-    <div id="score" class="info-box">점수: 0</div>
-    <div id="timer" class="info-box">02:30</div>
-    <div id="possibleCount" class="info-box">조합 가능: 0개</div>
+    <div id="score">점수: 0</div>
+    <div id="timer">02:30</div>
   </div>
   <div id="board"></div>
 </div>
 
 <div id="toast"></div>
 
-<div id="resultModal" class="hidden modal">
+<div id="resultModal" class="hidden">
   <div id="finalScoreText"></div>
   <button id="confirmResultBtn">확인</button>
-</div>
-
-<div id="noMoveModal" class="hidden modal">
-  <div id="noMoveText">조합 가능한 타일이 없습니다.</div>
-  <button id="confirmNoMoveBtn">확인</button>
 </div>
 
 <script type="module">
@@ -303,7 +275,6 @@ let gameStarted = false;
 let gameOver = true;
 let startPos = null;
 let endPos = null;
-let noMovePending = false;
 
 /* 히든모드 */
 let hiddenMode = false;
@@ -313,14 +284,12 @@ let pressTimer = null;
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
-const possibleCountEl = document.getElementById("possibleCount");
 const toastEl = document.getElementById("toast");
 const mainScreen = document.getElementById("mainScreen");
 const gameScreen = document.getElementById("gameScreen");
 const nickInput = document.getElementById("nicknameInput");
 const resultModal = document.getElementById("resultModal");
 const finalScoreText = document.getElementById("finalScoreText");
-const noMoveModal = document.getElementById("noMoveModal");
 
 const monthlyRankingTitleEl = document.getElementById("monthlyRankingTitle");
 const weeklyRankingTitleEl = document.getElementById("weeklyRankingTitle");
@@ -441,88 +410,6 @@ function startTimer(){
   }, 1000);
 }
 
-/* ===================== 조합 가능 계산 ===================== */
-function makePrefixBoards(){
-  const sumPrefix = Array.from({length: ROWS + 1}, () => Array(COLS + 1).fill(0));
-  const countPrefix = Array.from({length: ROWS + 1}, () => Array(COLS + 1).fill(0));
-
-  for(let r = 1; r <= ROWS; r++){
-    for(let c = 1; c <= COLS; c++){
-      const value = board[r - 1][c - 1];
-      const hasApple = value > 0 ? 1 : 0;
-
-      sumPrefix[r][c] =
-        sumPrefix[r - 1][c] +
-        sumPrefix[r][c - 1] -
-        sumPrefix[r - 1][c - 1] +
-        value;
-
-      countPrefix[r][c] =
-        countPrefix[r - 1][c] +
-        countPrefix[r][c - 1] -
-        countPrefix[r - 1][c - 1] +
-        hasApple;
-    }
-  }
-
-  return { sumPrefix, countPrefix };
-}
-
-function getRectValue(prefix, r1, c1, r2, c2){
-  return (
-    prefix[r2 + 1][c2 + 1]
-    - prefix[r1][c2 + 1]
-    - prefix[r2 + 1][c1]
-    + prefix[r1][c1]
-  );
-}
-
-function countPossibleMoves(){
-  const { sumPrefix, countPrefix } = makePrefixBoards();
-  let count = 0;
-
-  for(let r1 = 0; r1 < ROWS; r1++){
-    for(let c1 = 0; c1 < COLS; c1++){
-      for(let r2 = r1; r2 < ROWS; r2++){
-        for(let c2 = c1; c2 < COLS; c2++){
-          const sum = getRectValue(sumPrefix, r1, c1, r2, c2);
-          const appleCount = getRectValue(countPrefix, r1, c1, r2, c2);
-
-          if(sum === 10 && appleCount >= 2){
-            count++;
-          }
-        }
-      }
-    }
-  }
-
-  return count;
-}
-
-function showNoMoveModal(){
-  if(gameOver) return;
-  noMovePending = true;
-  gameStarted = false;
-  clearInterval(timerId);
-  noMoveModal.classList.remove("hidden");
-}
-
-function updatePossibleCount(){
-  const count = countPossibleMoves();
-  possibleCountEl.textContent = `조합 가능: ${count}개`;
-
-  if(gameStarted && !gameOver && count === 0 && !noMovePending){
-    showNoMoveModal();
-  }
-
-  return count;
-}
-
-document.getElementById("confirmNoMoveBtn").onclick = async () => {
-  noMoveModal.classList.add("hidden");
-  await endGame();
-};
-
 function clearSelection(){
   cells.forEach(c => c.classList.remove("selected"));
 }
@@ -612,7 +499,6 @@ boardEl.onpointerup = e => {
       score += appleCount;
       scoreEl.textContent = `점수: ${score}`;
       render();
-      updatePossibleCount();
     }, 400);
   }
 
@@ -756,7 +642,6 @@ async function endGame(){
 
   gameOver = true;
   gameStarted = false;
-  noMovePending = false;
   clearInterval(timerId);
 
   endSound.currentTime = 0;
@@ -780,14 +665,11 @@ document.getElementById("startBtn").onclick = () => {
   if(!getNick()) return alert("닉네임 입력");
 
   score = 0;
-  noMovePending = false;
   scoreEl.textContent = "점수: 0";
 
   timeLeft = hiddenMode ? 210 : GAME_TIME;
   timerEl.textContent =
     `${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(timeLeft % 60).padStart(2, "0")}`;
-
-  possibleCountEl.textContent = "조합 가능: 0개";
 
   gameOver = false;
   gameStarted = true;
@@ -799,11 +681,10 @@ document.getElementById("startBtn").onclick = () => {
   gameScreen.classList.remove("hidden");
 
   startTimer();
-  updatePossibleCount();
 };
 
 /* ===================== 초기 화면 ===================== */
-switchTab("weekly");
+switchTab("monthly");
 loadRanking();
 </script>
 
